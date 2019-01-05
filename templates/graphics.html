@@ -1,0 +1,14 @@
+<html>
+	<head>
+		<meta charset="UTF-8">
+		<title>{{ .Title }}</title>
+		<link rel="stylesheet" href="styles/index.css" />
+	</head>
+	<body>
+        <h1>{{ .Header }}</h1>
+        {{range .Slice}}
+        <a href="{{ . }}Smith">{{.}} Smith</a>
+        <button>Click Me</button>
+        {{end}}
+	</body>
+</html>
