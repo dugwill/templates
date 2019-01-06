@@ -1,0 +1,36 @@
+<html>
+	<head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>{{ .Title }}</title>
+        <style>
+
+            .container {
+			position: relative;
+			width: 50%;
+			}
+
+			.image {
+			opacity: 1;
+			display: inline;
+			width: 10%;
+			height: auto;
+			transition: .5s ease;
+			backface-visibility: hidden;
+			}
+
+        </style>
+
+	</head>
+	<body>
+
+	<h1>{{ .Header }}</h1>
+
+	{{$event:=.Event}}
+	
+	{{range .Thumbs}}
+        <img src="/html/adAlign/{{$event}}/{{.}}" alt={{.}} class=image >
+	{{end}}
+
+	</body>
+</html>
