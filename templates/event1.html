@@ -1,0 +1,21 @@
+<html>
+	<head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>{{ .Title }}</title>
+	
+	{{$StreamName:=.(Event.StreamName)}}
+  
+
+	</head>
+	<body>
+
+	<h1>{{ .Header }}</h1>
+
+	<h4>{{$StreamName}}</h4>
+
+
+	<h2>Generating JPGs</h2>
+
+	</body>
+</html>

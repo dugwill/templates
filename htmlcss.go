@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"html/template"
 	"io/ioutil"
@@ -21,7 +22,7 @@ var tmpls, _ = template.ParseFiles("templates/index.html",
 	"templates/graphics.html",
 	"templates/eventList.html",
 	"templates/event.html",
-	"templates/event2.html",
+	"templates/event1.html",
 	"templates/streamList.html")
 
 func main() {
@@ -46,7 +47,7 @@ func Event(w http.ResponseWriter, r *http.Request) {
 	data := struct {
 		Title  string
 		Header string
-		Event  string
+		Event  scte35.Event
 		Thumbs []string
 	}{
 		Title:  "Event",
@@ -66,7 +67,23 @@ func Event(w http.ResponseWriter, r *http.Request) {
 
 	dir := "/html/adAlign/" + event[0]
 
-	createJPEGs(dir)
+	var eventData scte35.Event
+	ts, err := readFiles(&eventData, dir)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	// Send first event page
+
+	data.Event = strconv.Itoa(int(eventData.EventID))
+	data.Title = eventData.StreamName
+
+	if err := tmpls.ExecuteTemplate(w, "event1.html", data); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	createJPEGs(&ts, &eventData, dir)
 
 	list, _ := ioutil.ReadDir("/html/adAlign/" + event[0]) // 0 to read all files and folders
 	for _, file := range list {
@@ -209,65 +226,15 @@ func Graphics(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func createJPEGs(dir string) {
+func createJPEGs(ts *[]string, eventData *scte35.Event, dir string) {
 
 	fmt.Printf("Here I will create some JPGs for your viewing pleasure.\n")
 
-	var eventData scte35.Event
-	var dat []string
-	var ts []string
-	// Read the file names from dir save them
-
-	list, _ := ioutil.ReadDir(dir)
-	for _, file := range list {
-		fmt.Println("Name: " + file.Name())
-		nameSplt := strings.Split(file.Name(), ".")
-
-		// if .jpg files exist, return
-		if nameSplt[len(nameSplt)-1] == "jpg" {
-			fmt.Println(".jpg file found: " + file.Name() + "Returning")
-			return
-		}
-
-		if nameSplt[len(nameSplt)-1] == "dat" {
-			fmt.Println(".dat file found: " + file.Name())
-			dat = append(dat, file.Name())
-
-		}
-
-		if nameSplt[len(nameSplt)-1] == "ts" {
-			fmt.Println(".ts file found: " + file.Name())
-			ts = append(ts, file.Name())
-		}
-
-	}
-
-	// if there is a .dat file Unmarshall XML data
-
-	var err error
-	var b []byte
-
-	b, err = ioutil.ReadFile(dir + "/" + dat[0])
-	if err != nil {
-		fmt.Print(err)
-	}
-
-	xml.Unmarshal(b, &eventData)
-
-	fmt.Println(eventData.StreamName)
-	fmt.Println(eventData.EventID)
-	fmt.Println(eventData.EventTime)
-	fmt.Println(eventData.PTS)
-	fmt.Println(eventData.Command)
-	fmt.Println(eventData.TypeID)
-	fmt.Println(string(eventData.UPID))
-	fmt.Println(eventData.BreakDuration)
-
 	//targetPTS, _ := strconv.ParseUint(eventData.PTS, 10, 64)
 
-	// for the .jpg files find the one with the time < .pts time from .dat
+	// for the .ts files find the one with the time < .pts time from .dat
 
-	for _, tsFile := range ts {
+	for _, tsFile := range *ts {
 		filePTS := extractPTS(tsFile)
 
 		fmt.Println(filePTS)
@@ -299,6 +266,66 @@ func createJPEGs(dir string) {
 	// extract the first 10 frames a jpg
 
 	return
+
+}
+
+func readFiles(eventData *scte35.Event, dir string) (ts []string, err error) {
+
+	var dat []string
+	// Read the file names from dir save them
+
+	list, _ := ioutil.ReadDir(dir)
+	for _, file := range list {
+		fmt.Println("Name: " + file.Name())
+		nameSplt := strings.Split(file.Name(), ".")
+
+		// if .jpg files exist, return
+		if nameSplt[len(nameSplt)-1] == "jpg" {
+			fmt.Println(".jpg file found: " + file.Name() + "Returning")
+			return ts, nil
+		}
+
+		if nameSplt[len(nameSplt)-1] == "dat" {
+			fmt.Println(".dat file found: " + file.Name())
+			dat = append(dat, file.Name())
+
+		}
+
+		if nameSplt[len(nameSplt)-1] == "ts" {
+			fmt.Println(".ts file found: " + file.Name())
+			ts = append(ts, file.Name())
+		}
+
+	}
+
+	// if there is a .dat file Unmarshall XML data
+
+	var b []byte
+
+	if len(dat[0]) > 0 {
+		b, err = ioutil.ReadFile(dir + "/" + dat[0])
+		if err != nil {
+			fmt.Print(err)
+			err := errors.New("Error reading metadata file")
+			return ts, err
+		}
+
+		xml.Unmarshal(b, &eventData)
+
+		fmt.Println(eventData.StreamName)
+		fmt.Println(eventData.EventID)
+		fmt.Println(eventData.EventTime)
+		fmt.Println(eventData.PTS)
+		fmt.Println(eventData.Command)
+		fmt.Println(eventData.TypeID)
+		fmt.Println(string(eventData.UPID))
+		fmt.Println(eventData.BreakDuration)
+	} else {
+		err := errors.New("no metatdata file found")
+		return ts, err
+	}
+
+	return ts, nil
 
 }
 
