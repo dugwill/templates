@@ -62,7 +62,7 @@ func Event(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Println("Url Param 'event' is: " + event[0])
-	data.Event = event[0]
+	data.Event.StreamName = event[0]
 	data.Title = event[0]
 
 	dir := "/html/adAlign/" + event[0]
@@ -75,7 +75,7 @@ func Event(w http.ResponseWriter, r *http.Request) {
 
 	// Send first event page
 
-	data.Event = strconv.Itoa(int(eventData.EventID))
+	data.Event.StreamName = strconv.Itoa(int(eventData.EventID))
 	data.Title = eventData.StreamName
 
 	if err := tmpls.ExecuteTemplate(w, "event1.html", data); err != nil {
