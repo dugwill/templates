@@ -8,9 +8,12 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"ffMpegOutput"
 
 	"github.com/Comcast/gots/scte35"
 )
@@ -33,6 +36,7 @@ func main() {
 
 	http.Handle("/jpegs/", http.StripPrefix("/jpegs/", http.FileServer(http.Dir("C:\\Users\\douglaswill\\goProjects\\src\\templates\\templates\\jpegs"))))
 	http.Handle("/html/adAlign/", http.StripPrefix("/html/adAlign/", http.FileServer(http.Dir("C:\\html\\adAlign"))))
+	http.Handle("/adAlign/", http.StripPrefix("/adAlign/", http.FileServer(http.Dir("C:\\html\\adAlign"))))
 	http.HandleFunc("/", Index)
 	http.HandleFunc("/graphics", Graphics)
 	http.HandleFunc("/eventList", EventList)
@@ -48,6 +52,7 @@ func Event(w http.ResponseWriter, r *http.Request) {
 		Title  string
 		Header string
 		Event  scte35.Event
+		Dir    string
 		Thumbs []string
 	}{
 		Title:  "Event",
@@ -62,13 +67,15 @@ func Event(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Println("Url Param 'event' is: " + event[0])
+	fmt.Println("Url Param 'event' is: " + event[0])
+
 	data.Event.StreamName = event[0]
 	data.Title = event[0]
 
 	dir := "/html/adAlign/" + event[0]
 
 	var eventData scte35.Event
-	ts, err := readFiles(&eventData, dir)
+	ts, jpegs, err := readFiles(&eventData, dir)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -83,17 +90,21 @@ func Event(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	createJPEGs(&ts, &eventData, dir)
+	if !jpegs {
+		createJPEGs(&ts, &eventData, dir)
+		jpegs = false
+	}
 
 	list, _ := ioutil.ReadDir("/html/adAlign/" + event[0]) // 0 to read all files and folders
 	for _, file := range list {
-		//fmt.Println("Name: " + file.Name())
 
 		if filepath.Ext(file.Name()) == ".jpg" {
 			data.Thumbs = append(data.Thumbs, file.Name())
 		}
 	}
 	fmt.Println(data.Thumbs)
+
+	data.Dir = event[0]
 
 	if err := tmpls.ExecuteTemplate(w, "event.html", data); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -196,8 +207,6 @@ func Graphics(w http.ResponseWriter, r *http.Request) {
 		Header: "Here are some Graphics!",
 	}
 
-	//data.Slice = []string{"thumb0001.jpg", "thumb0002.jpg", "thumb0003.jpg", "thumb0004.jpg", "thumb0005.jpg", "thumb0006.jpg", "thumb0007.jpg", "thumb0008.jpg", "thumb0009.jpg", "thumb0010.jpg", "thumb0011.jpg", "thumb0012.jpg", "thumb0013.jpg", "thumb0014.jpg", "thumb0015.jpg"}
-
 	data.Slice, _ = filepath.Glob(".\\templates\\jpegs\\*.jpg")
 	fmt.Println(len(data.Slice))
 	fmt.Println(data.Slice)
@@ -206,17 +215,6 @@ func Graphics(w http.ResponseWriter, r *http.Request) {
 	}
 
 	fmt.Println(data.Slice)
-
-	/*
-		files, err := ioutil.ReadDir("C:\\Users\\douglaswill\\goProjects\\src\\templates\\templates\\jpegs")
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		for _, f := range files {
-			fmt.Println(f.Name())
-		}
-	*/
 
 	fmt.Println("Serving Graphics")
 
@@ -228,33 +226,68 @@ func Graphics(w http.ResponseWriter, r *http.Request) {
 
 func createJPEGs(ts *[]string, eventData *scte35.Event, dir string) {
 
-	fmt.Printf("Here I will create some JPGs for your viewing pleasure.\n")
+	numJPEGS := 10
 
-	//targetPTS, _ := strconv.ParseUint(eventData.PTS, 10, 64)
+	fmt.Printf("Here I will create some JPGs for your viewing pleasure.\n")
 
 	// for the .ts files find the one with the time < .pts time from .dat
 
 	for _, tsFile := range *ts {
 		filePTS := extractPTS(tsFile)
+		targetPTS := uint64(eventData.PTS)
 
-		fmt.Println(filePTS)
+		fmt.Printf("Target PTS:= %v\n", targetPTS)
+		fmt.Printf("File PTS:=%v\n", filePTS)
 
 		var diff uint64
-		if filePTS > uint64(eventData.PTS) {
-			diff = filePTS - uint64(eventData.PTS)
+		if filePTS > targetPTS {
+			diff = filePTS - targetPTS
 		} else {
-			diff = uint64(eventData.PTS) - filePTS
+			diff = uint64(targetPTS) - filePTS
 		}
 
-		if diff > 1501 {
+		if diff >= 750 {
+
 			fmt.Printf("Here I will extract the last 10 frames.\n")
 
+			var mpegFile ffmpegOutput.FFprobe
+			inputFile := dir + "/" + tsFile
+
+			c := exec.Command(`ffprobe`, `-v`, `error`,
+				`-show_entries`, `stream=duration,nb_read_frames`,
+				`-count_frames`, `-of`, `xml`, inputFile)
+
+			respBytes, err := c.CombinedOutput()
+			if err != nil {
+				fmt.Println("Error: ", err)
+			}
+
+			fmt.Printf("%s", respBytes)
+
+			err = xml.Unmarshal(respBytes, &mpegFile)
+			if err != nil {
+				fmt.Println("Unmarshal Error: ", err)
+			}
+
+			fmt.Println(mpegFile.Streams[0].Stream[0].Duration)
+			fmt.Println(mpegFile.Streams[0].Stream[0].NbReadFrames)
+
+			startFrame, _ := strconv.ParseInt(mpegFile.Streams[0].Stream[0].NbReadFrames, 10, 32)
+			startFrame = startFrame - int64(numJPEGS)
+
+			before := true
+
+			extractJPGS(numJPEGS, int(startFrame), dir, tsFile, before)
+
 		}
 
-		if diff < 1501 {
+		if diff < 750 {
 			fmt.Printf("Here I will extract the first 10 frames.\n")
 
-			//ffmpeg -v error -i DSCHD_HD_NAT_16122_0_5965163366898931163_7145577515.ts -vf select='eq(n\,0)+eq(n\,1)+eq(n\,2)+eq(n\,3)+eq(n\,5)+eq(n\,6)+eq(n\,7)+eq(n\,8)+eq(n\,9)+eq(n\,10)' -vsync 0 7145577515_%02d.jpg
+			startFrame := 0
+			before := false
+
+			extractJPGS(numJPEGS, startFrame, dir, tsFile, before)
 
 		}
 	}
@@ -269,9 +302,69 @@ func createJPEGs(ts *[]string, eventData *scte35.Event, dir string) {
 
 }
 
-func readFiles(eventData *scte35.Event, dir string) (ts []string, err error) {
+func extractJPGS(numJPEGS, startFrame int, dir, fileName string, before bool) {
 
-	var dat []string
+	fmt.Printf("Extracting frames from %s: %d - %d\n", fileName, startFrame, startFrame+numJPEGS-1)
+
+	frames := "select='"
+	for i := startFrame; i < startFrame+numJPEGS; i++ {
+		if i == startFrame {
+			frames = frames + "eq(n\\,"
+		} else {
+			frames = frames + "+eq(n\\,"
+		}
+		frames = frames + strconv.Itoa(i) + ")"
+	}
+	frames = frames + "'"
+
+	fmt.Println(frames)
+	outputDir := ""
+	fullPath := "C:" + dir + "/" + fileName
+	if before {
+		outputDir = "C:" + dir + "/" + "a-before_%02d.jpg"
+	} else {
+		outputDir = "C:" + dir + "/" + "b-after_%02d.jpg"
+	}
+
+	c := exec.Command(`ffmpeg`, `-v`, `error`, `-i`, fullPath, `-vf`, frames, `-vsync`, `0`, outputDir)
+
+	fmt.Println(c)
+
+	err := c.Run()
+	if err != nil {
+		fmt.Println("Error: ", err)
+	}
+
+}
+
+func readFiles(eventData *scte35.Event, dir string) (ts []string, jpegs bool, err error) {
+
+	// if there is a .dat file Unmarshall XML data
+	var b []byte
+
+	dirSplt := strings.Split(dir, "/")
+	datFile := dirSplt[len(dirSplt)-1] + ".dat"
+
+	fmt.Printf("DAT Filename: %v\n", datFile)
+
+	b, err = ioutil.ReadFile(dir + "/" + datFile)
+	if err != nil {
+		fmt.Print(err)
+		err := errors.New("Error reading metadata file")
+		return ts, jpegs, err
+	}
+
+	xml.Unmarshal(b, &eventData)
+
+	fmt.Println(eventData.StreamName)
+	fmt.Println(eventData.EventID)
+	fmt.Println(eventData.EventTime)
+	fmt.Println(eventData.PTS)
+	fmt.Println(eventData.Command)
+	fmt.Println(eventData.TypeID)
+	fmt.Println(string(eventData.UPID))
+	fmt.Println(eventData.BreakDuration)
+
 	// Read the file names from dir save them
 
 	list, _ := ioutil.ReadDir(dir)
@@ -282,13 +375,8 @@ func readFiles(eventData *scte35.Event, dir string) (ts []string, err error) {
 		// if .jpg files exist, return
 		if nameSplt[len(nameSplt)-1] == "jpg" {
 			fmt.Println(".jpg file found: " + file.Name() + "Returning")
-			return ts, nil
-		}
-
-		if nameSplt[len(nameSplt)-1] == "dat" {
-			fmt.Println(".dat file found: " + file.Name())
-			dat = append(dat, file.Name())
-
+			jpegs = true
+			return ts, jpegs, nil
 		}
 
 		if nameSplt[len(nameSplt)-1] == "ts" {
@@ -298,34 +386,7 @@ func readFiles(eventData *scte35.Event, dir string) (ts []string, err error) {
 
 	}
 
-	// if there is a .dat file Unmarshall XML data
-
-	var b []byte
-
-	if len(dat[0]) > 0 {
-		b, err = ioutil.ReadFile(dir + "/" + dat[0])
-		if err != nil {
-			fmt.Print(err)
-			err := errors.New("Error reading metadata file")
-			return ts, err
-		}
-
-		xml.Unmarshal(b, &eventData)
-
-		fmt.Println(eventData.StreamName)
-		fmt.Println(eventData.EventID)
-		fmt.Println(eventData.EventTime)
-		fmt.Println(eventData.PTS)
-		fmt.Println(eventData.Command)
-		fmt.Println(eventData.TypeID)
-		fmt.Println(string(eventData.UPID))
-		fmt.Println(eventData.BreakDuration)
-	} else {
-		err := errors.New("no metatdata file found")
-		return ts, err
-	}
-
-	return ts, nil
+	return ts, jpegs, nil
 
 }
 
@@ -334,6 +395,10 @@ func extractPTS(file string) (filePTS uint64) {
 	a := strings.Split(file, "_")
 	b := strings.Split((a[len(a)-1]), ".")
 	c := b[0]
+
 	filePTS, _ = strconv.ParseUint(c, 10, 64)
-	return
+
+	fmt.Printf("Extract PTS from Filename:  %v  PTS: %v\n", file, filePTS)
+
+	return filePTS
 }

@@ -13,7 +13,7 @@
 
 			.image {
 			opacity: 1;
-			width: 10%;
+			width: 9%;
 			height: auto;
 			transition: .5s ease;
 			backface-visibility: hidden;
@@ -42,16 +42,15 @@
 
 	<h1>{{ .Header }}</h1>
 
-	{{$event:=.Event}}
+	{{$dir:=.Dir}}
 
-	<h2>PTS=7140177524</h2>
-	<h2>UPID: SIGNAL:8qAPZAQFMVwAAAAAAAABAQ==</h2>
-    <h2>EventID: 1644173351</h2>
+	<h2>Directory: {{.Dir}}</h2>
+	
 	
 	{{range .Thumbs}}
 
 	<div class="container">
-		<img src="/html/adAlign/{{$event}}/{{.}}" alt={{.}} class="image">
+		<img src="{{$dir}}/{{.}}" alt={{.}} class="image">
 		<div class="middle">
 			<div class="text">{{.}}</div>
 		</div>
@@ -61,3 +60,4 @@
 
 	</body>
 </html>
+ 
