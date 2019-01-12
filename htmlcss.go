@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"ffMpegOutput"
 
@@ -94,6 +95,8 @@ func Event(w http.ResponseWriter, r *http.Request) {
 		createJPEGs(&ts, &eventData, dir)
 		jpegs = false
 	}
+
+	time.Sleep(5 * time.Second)
 
 	list, _ := ioutil.ReadDir("/html/adAlign/" + event[0]) // 0 to read all files and folders
 	for _, file := range list {
