@@ -12,7 +12,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"time"
+	//"time"
 
 	"ffMpegOutput"
 
@@ -96,7 +96,7 @@ func Event(w http.ResponseWriter, r *http.Request) {
 		jpegs = false
 	}
 
-	time.Sleep(5 * time.Second)
+	//time.Sleep(5 * time.Second)
 
 	list, _ := ioutil.ReadDir("/html/adAlign/" + event[0]) // 0 to read all files and folders
 	for _, file := range list {
@@ -256,6 +256,7 @@ func createJPEGs(ts *[]string, eventData *scte35.Event, dir string) {
 			var mpegFile ffmpegOutput.FFprobe
 			inputFile := dir + "/" + tsFile
 
+			// Read number of frames in .ts file
 			c := exec.Command(`ffprobe`, `-v`, `error`,
 				`-show_entries`, `stream=duration,nb_read_frames`,
 				`-count_frames`, `-of`, `xml`, inputFile)
@@ -275,6 +276,7 @@ func createJPEGs(ts *[]string, eventData *scte35.Event, dir string) {
 			fmt.Println(mpegFile.Streams[0].Stream[0].Duration)
 			fmt.Println(mpegFile.Streams[0].Stream[0].NbReadFrames)
 
+			// extract the last 10 frames as jpg
 			startFrame, _ := strconv.ParseInt(mpegFile.Streams[0].Stream[0].NbReadFrames, 10, 32)
 			startFrame = startFrame - int64(numJPEGS)
 
@@ -282,6 +284,31 @@ func createJPEGs(ts *[]string, eventData *scte35.Event, dir string) {
 
 			extractJPGS(numJPEGS, int(startFrame), dir, tsFile, before)
 
+			// Get frame data
+
+			c = exec.Command(`ffprobe`, `-v`, `error`,
+				`-show_frames`, `-read_intervals`,
+				`0%+0.3`, `-of`, `xml`, inputFile)
+
+			respBytes, err = c.CombinedOutput()
+			if err != nil {
+				fmt.Println("Error: ", err)
+			}
+
+			//fmt.Printf("%s", respBytes)
+
+			err = xml.Unmarshal(respBytes, &mpegFile)
+			if err != nil {
+				fmt.Println("Unmarshal Error: ", err)
+			}
+
+			fmt.Println(mpegFile)
+
+			fmt.Printf("%d Frames read\n", len(mpegFile.Frames))
+			for _, frame := range mpegFile.Frames {
+				fmt.Printf("Frame %v, PTS %v\n", frame.CodedPictureNumber, frame.PktPtsTime)
+
+			}
 		}
 
 		if diff < 750 {
@@ -294,8 +321,6 @@ func createJPEGs(ts *[]string, eventData *scte35.Event, dir string) {
 
 		}
 	}
-
-	// extract the last 10 frames as jpg
 
 	// find the file with time > pts from .day
 
