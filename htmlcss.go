@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 	//"time"
+	"os"
 
 	"ffMpegOutput"
 
@@ -81,15 +82,19 @@ func Event(w http.ResponseWriter, r *http.Request) {
 		fmt.Println(err)
 	}
 
+	data.Event = eventData
+
 	// Send first event page
 
-	data.Event.StreamName = strconv.Itoa(int(eventData.EventID))
-	data.Title = eventData.StreamName
+	/*
+		data.Event.StreamName = strconv.Itoa(int(eventData.EventID))
+		data.Title = eventData.StreamName
 
-	if err := tmpls.ExecuteTemplate(w, "event1.html", data); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+		if err := tmpls.ExecuteTemplate(w, "event1.html", data); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	*/
 
 	if !jpegs {
 		createJPEGs(&ts, &eventData, dir)
@@ -285,28 +290,37 @@ func createJPEGs(ts *[]string, eventData *scte35.Event, dir string) {
 			extractJPGS(numJPEGS, int(startFrame), dir, tsFile, before)
 
 			// Get frame data
-
 			c = exec.Command(`ffprobe`, `-v`, `error`,
-				`-show_frames`, `-read_intervals`,
-				`0%+0.3`, `-of`, `xml`, inputFile)
+				`-show_frames`, `-of`, `xml`, inputFile)
 
-			respBytes, err = c.CombinedOutput()
-			if err != nil {
-				fmt.Println("Error: ", err)
+			fmt.Println("Getting Frame Data from before file")
+			fmt.Println(c)
+			rBytes, rErr := c.CombinedOutput()
+			if rErr != nil {
+				fmt.Println("Error: ", rErr)
 			}
 
-			//fmt.Printf("%s", respBytes)
-
-			err = xml.Unmarshal(respBytes, &mpegFile)
+			err = xml.Unmarshal(rBytes, &mpegFile)
 			if err != nil {
 				fmt.Println("Unmarshal Error: ", err)
 			}
 
-			fmt.Println(mpegFile)
+			for i := 0; i < len(mpegFile.Frames[0].Frame); i++ {
+				fmt.Printf("CPB %v, DPNum %v PTS %v DTS %v\n",
+					mpegFile.Frames[0].Frame[i].CodedPictureNumber,
+					mpegFile.Frames[0].Frame[i].DisplayPictureNumber,
+					mpegFile.Frames[0].Frame[i].PktPts,
+					mpegFile.Frames[0].Frame[i].PktDts)
+			}
 
-			fmt.Printf("%d Frames read\n", len(mpegFile.Frames))
-			for _, frame := range mpegFile.Frames {
-				fmt.Printf("Frame %v, PTS %v\n", frame.CodedPictureNumber, frame.PktPtsTime)
+			for i := 1; i <= 10; i++ {
+
+				oldName := dir + "/" + "before_" + fmt.Sprintf("%d", i) + ".jpg"
+				newName := dir + "/" + mpegFile.Frames[0].Frame[startFrame+int64(i-1)].PktPts + ".jpg"
+
+				fmt.Printf("OldName: %v  NewName: %v\n", oldName, newName)
+
+				os.Rename(oldName, newName)
 
 			}
 		}
@@ -317,7 +331,44 @@ func createJPEGs(ts *[]string, eventData *scte35.Event, dir string) {
 			startFrame := 0
 			before := false
 
+			var mpegFile ffmpegOutput.FFprobe
+			inputFile := dir + "/" + tsFile
+
 			extractJPGS(numJPEGS, startFrame, dir, tsFile, before)
+
+			// Get frame data
+			c := exec.Command(`ffprobe`, `-v`, `error`,
+				`-show_frames`, `-of`, `xml`, inputFile)
+
+			fmt.Println("Getting Frame Data from before file")
+			fmt.Println(c)
+			rBytes, rErr := c.CombinedOutput()
+			if rErr != nil {
+				fmt.Println("Error: ", rErr)
+			}
+
+			err := xml.Unmarshal(rBytes, &mpegFile)
+			if err != nil {
+				fmt.Println("Unmarshal Error: ", err)
+			}
+
+			for i := 0; i < len(mpegFile.Frames[0].Frame); i++ {
+				fmt.Printf("CPB %v, DPNum %v PTS %v DTS %v\n",
+					mpegFile.Frames[0].Frame[i].CodedPictureNumber,
+					mpegFile.Frames[0].Frame[i].DisplayPictureNumber,
+					mpegFile.Frames[0].Frame[i].PktPts,
+					mpegFile.Frames[0].Frame[i].PktDts)
+			}
+
+			for i := 1; i <= 10; i++ {
+
+				oldName := dir + "/" + "after_" + fmt.Sprintf("%d", i) + ".jpg"
+				newName := dir + "/" + mpegFile.Frames[0].Frame[startFrame+(i-1)].PktPts + ".jpg"
+
+				fmt.Printf("OldName: %v  NewName: %v\n", oldName, newName)
+
+				os.Rename(oldName, newName)
+			}
 
 		}
 	}
@@ -349,9 +400,9 @@ func extractJPGS(numJPEGS, startFrame int, dir, fileName string, before bool) {
 	outputDir := ""
 	fullPath := "C:" + dir + "/" + fileName
 	if before {
-		outputDir = "C:" + dir + "/" + "a-before_%02d.jpg"
+		outputDir = "C:" + dir + "/" + "before_%01d.jpg"
 	} else {
-		outputDir = "C:" + dir + "/" + "b-after_%02d.jpg"
+		outputDir = "C:" + dir + "/" + "after_%01d.jpg"
 	}
 
 	c := exec.Command(`ffmpeg`, `-v`, `error`, `-i`, fullPath, `-vf`, frames, `-vsync`, `0`, outputDir)
