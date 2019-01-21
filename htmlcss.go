@@ -23,7 +23,8 @@ import (
 //var tmpls = template.Must(template.ParseFiles("templates/index.html"))
 //var tmpls2 = template.Must(template.ParseFiles("templates/graphics.html"))
 
-var tmpls, _ = template.ParseFiles("template/index.html",
+var tmpls, _ = template.ParseFiles(
+	"template/index.html",
 	"template/graphics.html",
 	"template/eventList.html",
 	"template/event.html",
