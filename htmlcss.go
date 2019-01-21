@@ -23,12 +23,13 @@ import (
 //var tmpls = template.Must(template.ParseFiles("templates/index.html"))
 //var tmpls2 = template.Must(template.ParseFiles("templates/graphics.html"))
 
-var tmpls, _ = template.ParseFiles("templates/index.html",
-	"templates/graphics.html",
-	"templates/eventList.html",
-	"templates/event.html",
-	"templates/event1.html",
-	"templates/streamList.html")
+var tmpls, _ = template.ParseFiles("template/index.html",
+	"template/graphics.html",
+	"template/eventList.html",
+	"template/event.html",
+	"template/event1.html",
+	"template/dateList.html",
+	"template/streamList.html")
 
 func main() {
 
@@ -36,14 +37,14 @@ func main() {
 		Addr: ":9000",
 	}
 
-	http.Handle("/jpegs/", http.StripPrefix("/jpegs/", http.FileServer(http.Dir("C:\\Users\\douglaswill\\goProjects\\src\\templates\\templates\\jpegs"))))
-	http.Handle("/html/adAlign/", http.StripPrefix("/html/adAlign/", http.FileServer(http.Dir("C:\\html\\adAlign"))))
-	http.Handle("/adAlign/", http.StripPrefix("/adAlign/", http.FileServer(http.Dir("C:\\html\\adAlign"))))
+	http.Handle("/html/adAlign/", http.StripPrefix("/html/adAlign/", http.FileServer(http.Dir("\\html\\AdAlign"))))
+	http.Handle("/adAlign/", http.StripPrefix("/adAlign/", http.FileServer(http.Dir("/html/AdAlign"))))
 	http.HandleFunc("/", Index)
 	http.HandleFunc("/graphics", Graphics)
 	http.HandleFunc("/eventList", EventList)
 	http.HandleFunc("/adAlign/event", Event)
 	http.HandleFunc("/streamList", StreamList)
+	http.HandleFunc("/dateList", DateList)
 
 	log.Fatalln(server.ListenAndServe())
 }
@@ -74,7 +75,9 @@ func Event(w http.ResponseWriter, r *http.Request) {
 	data.Event.StreamName = event[0]
 	data.Title = event[0]
 
-	dir := "/html/adAlign/" + event[0]
+	dir := "/html/AdAlign/" + event[0]
+
+	fmt.Println(dir)
 
 	var eventData scte35.Event
 	ts, jpegs, err := readFiles(&eventData, dir)
@@ -103,7 +106,7 @@ func Event(w http.ResponseWriter, r *http.Request) {
 
 	//time.Sleep(5 * time.Second)
 
-	list, _ := ioutil.ReadDir("/html/adAlign/" + event[0]) // 0 to read all files and folders
+	list, _ := ioutil.ReadDir("/html/AdAlign/" + event[0]) // 0 to read all files and folders
 	for _, file := range list {
 
 		if filepath.Ext(file.Name()) == ".jpg" {
@@ -144,7 +147,7 @@ func EventList(w http.ResponseWriter, r *http.Request) {
 	data.Title = "Stream: " + stream[0]
 	data.Stream = stream[0]
 
-	list, _ := ioutil.ReadDir("/html/adAlign/" + stream[0]) // 0 to read all files and folders
+	list, _ := ioutil.ReadDir("/html/AdAlign/" + stream[0]) // 0 to read all files and folders
 	for _, file := range list {
 		fmt.Println("Name: " + file.Name())
 		fmt.Printf("Dir?: %v\n", file.IsDir())
@@ -172,7 +175,7 @@ func StreamList(w http.ResponseWriter, r *http.Request) {
 		Header: "Streams",
 	}
 
-	list, _ := ioutil.ReadDir("/html/adAlign/") // 0 to read all files and folders
+	list, _ := ioutil.ReadDir("/html/AdAlign/") // 0 to read all files and folders
 	for _, file := range list {
 		fmt.Println("Name: " + file.Name())
 		fmt.Printf("Dir?: %v\n", file.IsDir())
@@ -184,6 +187,46 @@ func StreamList(w http.ResponseWriter, r *http.Request) {
 	fmt.Println(data.StreamList)
 
 	if err := tmpls.ExecuteTemplate(w, "streamList.html", data); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+func DateList(w http.ResponseWriter, r *http.Request) {
+
+	data := struct {
+		Title     string
+		Header    string
+		EventList []string
+		Stream    string
+	}{
+		Title:  "Days",
+		Header: "Choose a Day",
+	}
+
+	stream, ok := r.URL.Query()["stream"]
+
+	if !ok || len(stream[0]) < 1 {
+		log.Println("Url Param event is missing")
+		return
+	}
+
+	log.Println("Url Param 'stream' is: " + stream[0])
+	data.Title = "Stream: " + stream[0]
+	data.Stream = stream[0]
+
+	list, _ := ioutil.ReadDir("/html/AdAlign/" + stream[0]) // 0 to read all files and folders
+	for _, file := range list {
+		fmt.Println("Name: " + file.Name())
+		fmt.Printf("Dir?: %v\n", file.IsDir())
+
+		if file.IsDir() {
+			data.EventList = append(data.EventList, file.Name())
+		}
+	}
+	fmt.Println(data.EventList)
+
+	if err := tmpls.ExecuteTemplate(w, "dateList.html", data); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -215,7 +258,6 @@ func Graphics(w http.ResponseWriter, r *http.Request) {
 		Header: "Here are some Graphics!",
 	}
 
-	data.Slice, _ = filepath.Glob(".\\templates\\jpegs\\*.jpg")
 	fmt.Println(len(data.Slice))
 	fmt.Println(data.Slice)
 	for f := range data.Slice {
@@ -398,11 +440,11 @@ func extractJPGS(numJPEGS, startFrame int, dir, fileName string, before bool) {
 
 	fmt.Println(frames)
 	outputDir := ""
-	fullPath := "C:" + dir + "/" + fileName
+	fullPath := dir + "/" + fileName
 	if before {
-		outputDir = "C:" + dir + "/" + "before_%01d.jpg"
+		outputDir = dir + "/" + "before_%01d.jpg"
 	} else {
-		outputDir = "C:" + dir + "/" + "after_%01d.jpg"
+		outputDir = dir + "/" + "after_%01d.jpg"
 	}
 
 	c := exec.Command(`ffmpeg`, `-v`, `error`, `-i`, fullPath, `-vf`, frames, `-vsync`, `0`, outputDir)
@@ -435,6 +477,7 @@ func readFiles(eventData *scte35.Event, dir string) (ts []string, jpegs bool, er
 
 	xml.Unmarshal(b, &eventData)
 
+	fmt.Println("DAT Data")
 	fmt.Println(eventData.StreamName)
 	fmt.Println(eventData.EventID)
 	fmt.Println(eventData.EventTime)

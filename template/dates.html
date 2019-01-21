@@ -1,0 +1,15 @@
+<html>
+	<head>
+		<meta charset="UTF-8">
+		<title>{{ .Title }}</title>
+		<link rel="stylesheet" href="styles/index.css" />
+	</head>
+	<body>
+        <h1>{{ .Header }}</h1>
+        <h2>Choose a Date</h2>
+        {{range .DatesList}}
+         <a href="/eventList?date={{.}}">{{.}}</a>
+         <br/>
+        {{end}}
+	</body>
+</html>
