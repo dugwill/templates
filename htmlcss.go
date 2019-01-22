@@ -57,6 +57,7 @@ func Event(w http.ResponseWriter, r *http.Request) {
 		Title  string
 		Header string
 		Event  scte35.Event
+		Signal string
 		Dir    string
 		Thumbs []string
 	}{
@@ -115,7 +116,7 @@ func Event(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	fmt.Println(data.Thumbs)
-
+	data.Signal = (strings.Split(string(data.Event.UPID), ":"))[1]
 	data.Dir = dir
 
 	if err := tmpls.ExecuteTemplate(w, "event.html", data); err != nil {

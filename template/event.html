@@ -44,10 +44,18 @@
 
 	{{$dir:=.Dir}}
 
-	<h2>Directory: {{.Dir}}</h2>
-	<h2>Event PTS {{.Event.PTS}}</h2>
-	
-	
+	<h2>EventInfo</h2>
+	<p>
+	Stream: {{.Event.StreamName}}<br>
+	EventID: {{.Event.EventID}}<br>
+	Event Time: {{.Event.EventTime}}<br>
+	Stream: {{.Event.StreamName}}<br>
+	Event PTS: {{.Event.PTS}}<br>
+	Event TypeID: {{.Event.TypeID}}<br>
+	Event Signal: {{.Signal}}<br>
+	Event Duration: {{.Event.BreakDuration}}<br>
+	</p>
+
 	{{range .Thumbs}}
 
 	<div class="container">
