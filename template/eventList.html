@@ -4,14 +4,37 @@
 		<meta charset="UTF-8">
 		<title>{{ .Title }}</title>
 		<link rel="stylesheet" href="styles/index.css" />
+		<style>
+			table, th, td {
+				border: 1px solid black;
+			}
+		</style>
 	</head>
 	<body>
-        <h1>{{ .Header }}</h1>
-	<h2>Event List</h2>
-	{{$stream:=.Stream}}
-        {{range .EventList}}
-         <a href="/adAlign/event?event={{$stream}}/{{.}}">{{.}}</a>
-         <br/>
-        {{end}}
+		{{$stream:=.Stream}}
+		{{$date:=.Date}}
+		<h1>{{ .Header }}</h1>
+		<h2>Event List</h2>
+
+		<table style="width:75%">
+			<tr>
+				<th>Time</th>
+				<th>Event ID</th>
+				<th>Type</th>
+				<th>Signal ID</th>
+				<th>Duration</th>
+			</tr>
+			{{range .EventList}}
+			<tr>
+				<td>
+				<a href="/adAlign/event?stream={{$stream}}&date={{$date}}&event={{.EventFile}}">{{.EventFile}}</a>
+				</td>
+				<td>{{.EventID}}</td>
+				<td>{{.TypeID}}</td>
+				<td>{{.UPID}}</td>
+				<td>{{.Duration}}</td>
+			</tr>
+			{{end}}
+		</table>
 	</body>
 </html>

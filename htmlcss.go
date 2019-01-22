@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+
 	//"time"
 	"os"
 
@@ -38,8 +39,8 @@ func main() {
 		Addr: ":9000",
 	}
 
-	http.Handle("/html/adAlign/", http.StripPrefix("/html/adAlign/", http.FileServer(http.Dir("\\html\\AdAlign"))))
-	http.Handle("/adAlign/", http.StripPrefix("/adAlign/", http.FileServer(http.Dir("/html/AdAlign"))))
+	http.Handle("/html/AdAlign/", http.StripPrefix("/html/AdAlign/", http.FileServer(http.Dir("/html/AdAlign/"))))
+	http.Handle("/AdAlign/", http.StripPrefix("/AdAlign/", http.FileServer(http.Dir("/html/AdAlign"))))
 	http.HandleFunc("/", Index)
 	http.HandleFunc("/graphics", Graphics)
 	http.HandleFunc("/eventList", EventList)
@@ -64,19 +65,30 @@ func Event(w http.ResponseWriter, r *http.Request) {
 	}
 
 	event, ok := r.URL.Query()["event"]
+	if !ok || len(event[0]) < 1 {
+		log.Println("Url Param 'event' is missing")
+		return
+	}
+	date, ok := r.URL.Query()["date"]
+	if !ok || len(event[0]) < 1 {
+		log.Println("Url Param 'date' is missing")
+		return
+	}
+	stream, ok := r.URL.Query()["stream"]
 
 	if !ok || len(event[0]) < 1 {
-		log.Println("Url Param event is missing")
+		log.Println("Url Param 'stream' is missing")
 		return
 	}
 
-	log.Println("Url Param 'event' is: " + event[0])
+	fmt.Println("Url Param 'stream' is: " + stream[0])
+	fmt.Println("Url Param 'date' is: " + date[0])
 	fmt.Println("Url Param 'event' is: " + event[0])
 
-	data.Event.StreamName = event[0]
-	data.Title = event[0]
+	data.Event.StreamName = stream[0]
+	data.Title = date[0]
 
-	dir := "/html/AdAlign/" + event[0]
+	dir := "/html/AdAlign/" + stream[0] + "/" + date[0] + "/" + event[0]
 
 	fmt.Println(dir)
 
@@ -88,18 +100,6 @@ func Event(w http.ResponseWriter, r *http.Request) {
 
 	data.Event = eventData
 
-	// Send first event page
-
-	/*
-		data.Event.StreamName = strconv.Itoa(int(eventData.EventID))
-		data.Title = eventData.StreamName
-
-		if err := tmpls.ExecuteTemplate(w, "event1.html", data); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-	*/
-
 	if !jpegs {
 		createJPEGs(&ts, &eventData, dir)
 		jpegs = false
@@ -107,7 +107,7 @@ func Event(w http.ResponseWriter, r *http.Request) {
 
 	//time.Sleep(5 * time.Second)
 
-	list, _ := ioutil.ReadDir("/html/AdAlign/" + event[0]) // 0 to read all files and folders
+	list, _ := ioutil.ReadDir(dir) // 0 to read all files and folders
 	for _, file := range list {
 
 		if filepath.Ext(file.Name()) == ".jpg" {
@@ -116,7 +116,7 @@ func Event(w http.ResponseWriter, r *http.Request) {
 	}
 	fmt.Println(data.Thumbs)
 
-	data.Dir = event[0]
+	data.Dir = dir
 
 	if err := tmpls.ExecuteTemplate(w, "event.html", data); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -127,10 +127,18 @@ func Event(w http.ResponseWriter, r *http.Request) {
 
 func EventList(w http.ResponseWriter, r *http.Request) {
 
+	type EventList struct {
+		EventFile string
+		EventID   uint32
+		TypeID    scte35.SegDescType
+		UPID      string
+		Duration  uint64
+	}
+
 	data := struct {
 		Title     string
 		Header    string
-		EventList []string
+		EventList []EventList
 		Stream    string
 		Date      string
 	}{
@@ -157,22 +165,54 @@ func EventList(w http.ResponseWriter, r *http.Request) {
 	data.Stream = stream[0]
 	data.Date = date[0]
 
-	list, _ := ioutil.ReadDir("/html/AdAlign/" + stream[0] + "/" + date[0]) // 0 to read all files and folders
-	for _, file := range list {
+	fileList, _ := ioutil.ReadDir("/html/AdAlign/" + stream[0] + "/" + date[0]) // 0 to read all files and folders
+	for _, file := range fileList {
 		fmt.Println("Name: " + file.Name())
 		//fmt.Printf("Dir?: %v\n", file.IsDir())
 		if filepath.Ext(file.Name()) == ".dat" {
-			data.EventList = append(data.EventList, file.Name())
+			fmt.Printf("Processing DAT File: %v\n", file.Name())
+
+			b, err := ioutil.ReadFile("/html/AdAlign/" + stream[0] + "/" + date[0] + "/" + file.Name())
+
+			if err != nil {
+				fmt.Print(err)
+				continue
+			}
+			var tempEvent scte35.Event
+			var elEntry EventList
+
+			a := strings.Split(file.Name(), ".")
+			elEntry.EventFile = a[0] + "." + a[1]
+			fmt.Println(elEntry.EventFile)
+
+			xml.Unmarshal(b, &tempEvent)
+
+			fmt.Println("DAT Data")
+			fmt.Println(tempEvent.StreamName)
+			fmt.Println(tempEvent.EventID)
+			elEntry.EventID = tempEvent.EventID
+			fmt.Println(tempEvent.EventTime)
+			fmt.Println(tempEvent.PTS)
+			fmt.Println(tempEvent.Command)
+			fmt.Println(tempEvent.TypeID)
+			elEntry.TypeID = tempEvent.TypeID
+			fmt.Println(string(tempEvent.UPID))
+			elEntry.UPID = (strings.Split(string(tempEvent.UPID), ":"))[1]
+			fmt.Println(tempEvent.BreakDuration)
+			elEntry.Duration = uint64(tempEvent.BreakDuration) / 90000
+
+			data.EventList = append(data.EventList, elEntry)
 		}
 	}
-	fmt.Println(data.EventList)
+	//fmt.Println(data.EventList)
 
-	var events []scte35.Event
+	//Process .dat files
 
 	if err := tmpls.ExecuteTemplate(w, "eventList.html", data); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
 }
 
 func StreamList(w http.ResponseWriter, r *http.Request) {
@@ -290,6 +330,8 @@ func createJPEGs(ts *[]string, eventData *scte35.Event, dir string) {
 	numJPEGS := 10
 
 	fmt.Printf("Here I will create some JPGs for your viewing pleasure.\n")
+
+	fmt.Printf("TS Files to process: %v\n", ts)
 
 	// for the .ts files find the one with the time < .pts time from .dat
 
@@ -472,14 +514,13 @@ func extractJPGS(numJPEGS, startFrame int, dir, fileName string, before bool) {
 func readFiles(eventData *scte35.Event, dir string) (ts []string, jpegs bool, err error) {
 
 	// if there is a .dat file Unmarshall XML data
-	var b []byte
 
-	dirSplt := strings.Split(dir, "/")
-	datFile := dirSplt[len(dirSplt)-1] + ".dat"
+	//dirSplt := strings.Split(dir, "/")
+	datFile := dir + ".dat"
 
 	fmt.Printf("DAT Filename: %v\n", datFile)
 
-	b, err = ioutil.ReadFile(dir + "/" + datFile)
+	b, err := ioutil.ReadFile(dir + ".dat")
 
 	if err != nil {
 		fmt.Print(err)
@@ -501,19 +542,19 @@ func readFiles(eventData *scte35.Event, dir string) (ts []string, jpegs bool, er
 
 	// Read the file names from dir save them
 
-	list, _ := ioutil.ReadDir(dir)
+	list, _ := ioutil.ReadDir(dir + "/")
 	for _, file := range list {
 		fmt.Println("Name: " + file.Name())
-		nameSplt := strings.Split(file.Name(), ".")
+		//nameSplt := strings.Split(file.Name(), ".")
 
 		// if .jpg files exist, return
-		if nameSplt[len(nameSplt)-1] == "jpg" {
+		if filepath.Ext(file.Name()) == ".jpg" {
 			fmt.Println(".jpg file found: " + file.Name() + "Returning")
 			jpegs = true
 			return ts, jpegs, nil
 		}
 
-		if nameSplt[len(nameSplt)-1] == "ts" {
+		if filepath.Ext(file.Name()) == ".ts" {
 			fmt.Println(".ts file found: " + file.Name())
 			ts = append(ts, file.Name())
 		}
