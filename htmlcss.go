@@ -132,6 +132,7 @@ func EventList(w http.ResponseWriter, r *http.Request) {
 		Header    string
 		EventList []string
 		Stream    string
+		Date      string
 	}{
 		Title:  "Event List",
 		Header: "SCTE-35 Events",
@@ -140,15 +141,23 @@ func EventList(w http.ResponseWriter, r *http.Request) {
 	stream, ok := r.URL.Query()["stream"]
 
 	if !ok || len(stream[0]) < 1 {
-		log.Println("Url Param event is missing")
+		log.Println("Url Param 'stream' is missing")
+		return
+	}
+
+	date, ok := r.URL.Query()["date"]
+
+	if !ok || len(stream[0]) < 1 {
+		log.Println("Url Param 'date' is missing")
 		return
 	}
 
 	log.Println("Url Param 'stream' is: " + stream[0])
-	data.Title = "Stream: " + stream[0]
+	log.Println("Url Param 'date' is: " + date[0])
 	data.Stream = stream[0]
+	data.Date = date[0]
 
-	list, _ := ioutil.ReadDir("/html/AdAlign/" + stream[0]) // 0 to read all files and folders
+	list, _ := ioutil.ReadDir("/html/AdAlign/" + stream[0] + "/" + date[0]) // 0 to read all files and folders
 	for _, file := range list {
 		fmt.Println("Name: " + file.Name())
 		fmt.Printf("Dir?: %v\n", file.IsDir())
@@ -196,10 +205,10 @@ func StreamList(w http.ResponseWriter, r *http.Request) {
 func DateList(w http.ResponseWriter, r *http.Request) {
 
 	data := struct {
-		Title     string
-		Header    string
-		EventList []string
-		Stream    string
+		Title    string
+		Header   string
+		DateList []string
+		Stream   string
 	}{
 		Title:  "Days",
 		Header: "Choose a Day",
@@ -222,10 +231,10 @@ func DateList(w http.ResponseWriter, r *http.Request) {
 		fmt.Printf("Dir?: %v\n", file.IsDir())
 
 		if file.IsDir() {
-			data.EventList = append(data.EventList, file.Name())
+			data.DateList = append(data.DateList, file.Name())
 		}
 	}
-	fmt.Println(data.EventList)
+	fmt.Println(data.DateList)
 
 	if err := tmpls.ExecuteTemplate(w, "dateList.html", data); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
