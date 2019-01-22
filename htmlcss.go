@@ -160,13 +160,14 @@ func EventList(w http.ResponseWriter, r *http.Request) {
 	list, _ := ioutil.ReadDir("/html/AdAlign/" + stream[0] + "/" + date[0]) // 0 to read all files and folders
 	for _, file := range list {
 		fmt.Println("Name: " + file.Name())
-		fmt.Printf("Dir?: %v\n", file.IsDir())
-
-		if file.IsDir() {
+		//fmt.Printf("Dir?: %v\n", file.IsDir())
+		if filepath.Ext(file.Name()) == ".dat" {
 			data.EventList = append(data.EventList, file.Name())
 		}
 	}
 	fmt.Println(data.EventList)
+
+	var events []scte35.Event
 
 	if err := tmpls.ExecuteTemplate(w, "eventList.html", data); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -479,6 +480,7 @@ func readFiles(eventData *scte35.Event, dir string) (ts []string, jpegs bool, er
 	fmt.Printf("DAT Filename: %v\n", datFile)
 
 	b, err = ioutil.ReadFile(dir + "/" + datFile)
+
 	if err != nil {
 		fmt.Print(err)
 		err := errors.New("Error reading metadata file")
