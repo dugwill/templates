@@ -21,9 +21,6 @@ import (
 	"github.com/Comcast/gots/scte35"
 )
 
-//var tmpls = template.Must(template.ParseFiles("templates/index.html"))
-//var tmpls2 = template.Must(template.ParseFiles("templates/graphics.html"))
-
 var tmpls, _ = template.ParseFiles(
 	"template/index.html",
 	"template/graphics.html",
@@ -33,13 +30,15 @@ var tmpls, _ = template.ParseFiles(
 	"template/dateList.html",
 	"template/streamList.html")
 
+var dir = "/app/html/AdAlign/"
+
 func main() {
 
 	server := http.Server{
 		Addr: ":9000",
 	}
 
-	http.Handle("/html/AdAlign/", http.StripPrefix("/html/AdAlign/", http.FileServer(http.Dir("/html/AdAlign/"))))
+	http.Handle(dir, http.StripPrefix(dir, http.FileServer(http.Dir(dir))))
 	http.Handle("/AdAlign/", http.StripPrefix("/AdAlign/", http.FileServer(http.Dir("/html/AdAlign"))))
 	http.HandleFunc("/", Index)
 	http.HandleFunc("/graphics", Graphics)
@@ -89,7 +88,7 @@ func Event(w http.ResponseWriter, r *http.Request) {
 	data.Event.StreamName = stream[0]
 	data.Title = date[0]
 
-	dir := "/html/AdAlign/" + stream[0] + "/" + date[0] + "/" + event[0]
+	dir := dir + stream[0] + "/" + date[0] + "/" + event[0]
 
 	fmt.Println(dir)
 
@@ -166,14 +165,14 @@ func EventList(w http.ResponseWriter, r *http.Request) {
 	data.Stream = stream[0]
 	data.Date = date[0]
 
-	fileList, _ := ioutil.ReadDir("/html/AdAlign/" + stream[0] + "/" + date[0]) // 0 to read all files and folders
+	fileList, _ := ioutil.ReadDir(dir + stream[0] + "/" + date[0]) // 0 to read all files and folders
 	for _, file := range fileList {
 		fmt.Println("Name: " + file.Name())
 		//fmt.Printf("Dir?: %v\n", file.IsDir())
 		if filepath.Ext(file.Name()) == ".dat" {
 			fmt.Printf("Processing DAT File: %v\n", file.Name())
 
-			b, err := ioutil.ReadFile("/html/AdAlign/" + stream[0] + "/" + date[0] + "/" + file.Name())
+			b, err := ioutil.ReadFile(dir + stream[0] + "/" + date[0] + "/" + file.Name())
 
 			if err != nil {
 				fmt.Print(err)
@@ -227,7 +226,7 @@ func StreamList(w http.ResponseWriter, r *http.Request) {
 		Header: "Streams",
 	}
 
-	list, _ := ioutil.ReadDir("/html/AdAlign/") // 0 to read all files and folders
+	list, _ := ioutil.ReadDir(dir) // 0 to read all files and folders
 	for _, file := range list {
 		fmt.Println("Name: " + file.Name())
 		fmt.Printf("Dir?: %v\n", file.IsDir())
@@ -267,7 +266,7 @@ func DateList(w http.ResponseWriter, r *http.Request) {
 	data.Title = "Stream: " + stream[0]
 	data.Stream = stream[0]
 
-	list, _ := ioutil.ReadDir("/html/AdAlign/" + stream[0]) // 0 to read all files and folders
+	list, _ := ioutil.ReadDir(dir + stream[0]) // 0 to read all files and folders
 	for _, file := range list {
 		fmt.Println("Name: " + file.Name())
 		fmt.Printf("Dir?: %v\n", file.IsDir())
