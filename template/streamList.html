@@ -1,14 +1,30 @@
 <html>
 	<head>
 		<meta charset="UTF-8">
-		<title>{{ .Title }}</title>
+                <title>{{ .Title }}</title>
+                
+                <style>
+			table, th, td {
+				border: 1px solid black;
+			}
+		</style>
 	</head>
 	<body>
-        <h1>{{ .Header }}</h1>
+        <h1>SCTE-35 Signal and Video Alignment Monitor</h1>
         <h2>Stream List</h2>
-        {{range .StreamList}}
-         <a href="/dateList?stream={{.}}">{{.}}</a>
-         <br/>
-        {{end}}
+
+        <table style="width:50%">
+                <tr>
+                        <th>Stream Name</th>
+                </tr>
+                {{range .StreamList}}
+                <tr>
+                        <td>
+                          <a href="/dateList?stream={{.}}">{{.}}</a>
+                        </td>
+                </tr>
+                {{end}}
+        </table>
+
 	</body>
 </html>

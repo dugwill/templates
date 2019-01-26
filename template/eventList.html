@@ -13,7 +13,9 @@
 	<body>
 		{{$stream:=.Stream}}
 		{{$date:=.Date}}
-		<h1>{{ .Header }}</h1>
+		<h1>SCTE-35 Signal and Video Alignment Monitor</h1>
+		<h2>Stream: {{$stream}}</h2>
+		<h2>Date: {{$date}}</h2>
 		<h2>Event List</h2>
 
 		<table style="width:75%">
@@ -21,17 +23,26 @@
 				<th>Time</th>
 				<th>Event ID</th>
 				<th>Type</th>
+				<th>Action</th>
 				<th>Signal ID</th>
 				<th>Duration</th>
 			</tr>
 			{{range .EventList}}
 			<tr>
-				<td>
-				<a href="/adAlign/event?stream={{$stream}}&date={{$date}}&event={{.EventFile}}">{{.EventFile}}</a>
-				</td>
+				<td>{{.EventFile}}</td>
 				<td>{{.EventID}}</td>
 				<td>{{.TypeID}}</td>
-				<td>{{.UPID}}</td>
+				<td> 
+					{{ if eq .TypeID 54}}
+						Start ad 
+					{{else}}
+						End ad
+					{{end}}
+
+				</td>
+				<td>
+					<a href="/adAlign/event?stream={{$stream}}&date={{$date}}&event={{.EventFile}}">{{.UPID}}
+				</td>
 				<td>{{.Duration}}</td>
 			</tr>
 			{{end}}
