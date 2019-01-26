@@ -91,31 +91,31 @@ func Event(w http.ResponseWriter, r *http.Request) {
 
 	event, ok := r.URL.Query()["event"]
 	if !ok || len(event[0]) < 1 {
-		log.Println("Url Param 'event' is missing")
+		Error.LogIt("Url Param 'event' is missing")
 		return
 	}
 	date, ok := r.URL.Query()["date"]
 	if !ok || len(event[0]) < 1 {
-		log.Println("Url Param 'date' is missing")
+		Error.LogIt("Url Param 'date' is missing")
 		return
 	}
 	stream, ok := r.URL.Query()["stream"]
 
 	if !ok || len(event[0]) < 1 {
-		log.Println("Url Param 'stream' is missing")
+		Error.LogIt("Url Param 'stream' is missing")
 		return
 	}
 
-	fmt.Println("Url Param 'stream' is: " + stream[0])
-	fmt.Println("Url Param 'date' is: " + date[0])
-	fmt.Println("Url Param 'event' is: " + event[0])
+	Trace.LogIt(fmt.Sprintf("Url Param 'stream' is: " + stream[0]))
+	Trace.LogIt(fmt.Sprintf("Url Param 'date' is: " + date[0]))
+	Trace.LogIt(fmt.Sprintf("Url Param 'event' is: " + event[0]))
 
 	data.Event.StreamName = stream[0]
 	data.Title = date[0]
 
 	dir := dir + stream[0] + "/" + date[0] + "/" + event[0]
 
-	fmt.Println(dir)
+	Trace.LogIt(fmt.Sprint("%v", dir))
 
 	var eventData scte35.Event
 	ts, jpegs, err := readFiles(&eventData, dir)
@@ -174,25 +174,25 @@ func EventList(w http.ResponseWriter, r *http.Request) {
 	stream, ok := r.URL.Query()["stream"]
 
 	if !ok || len(stream[0]) < 1 {
-		log.Println("Url Param 'stream' is missing")
+		Error.LogIt("Url Param 'stream' is missing")
 		return
 	}
 
 	date, ok := r.URL.Query()["date"]
 
 	if !ok || len(stream[0]) < 1 {
-		log.Println("Url Param 'date' is missing")
+		Error.LogIt("Url Param 'date' is missing")
 		return
 	}
 
-	log.Println("Url Param 'stream' is: " + stream[0])
-	log.Println("Url Param 'date' is: " + date[0])
+	Trace.LogIt("Url Param 'stream' is: " + stream[0])
+	Trace.LogIt("Url Param 'date' is: " + date[0])
 	data.Stream = stream[0]
 	data.Date = date[0]
 
 	fileList, _ := ioutil.ReadDir(dir + stream[0] + "/" + date[0]) // 0 to read all files and folders
 	for _, file := range fileList {
-		fmt.Println("Name: " + file.Name())
+		Trace.LogIt(fmt.Sprintf("Name: " + file.Name()))
 		//fmt.Printf("Dir?: %v\n", file.IsDir())
 		if filepath.Ext(file.Name()) == ".dat" {
 			Trace.LogIt(fmt.Sprintf("Processing DAT File: %v\n", file.Name()))
@@ -212,18 +212,18 @@ func EventList(w http.ResponseWriter, r *http.Request) {
 
 			xml.Unmarshal(b, &tempEvent)
 
-			fmt.Println("DAT Data")
-			fmt.Println(tempEvent.StreamName)
-			fmt.Println(tempEvent.EventID)
+			Trace.LogIt("DAT Data")
+			Trace.LogIt(fmt.Sprintf("%v", tempEvent.StreamName))
+			Trace.LogIt(fmt.Sprintf("%v", tempEvent.EventID))
 			elEntry.EventID = tempEvent.EventID
-			fmt.Println(tempEvent.EventTime)
-			fmt.Println(tempEvent.PTS)
-			fmt.Println(tempEvent.Command)
-			fmt.Println(tempEvent.TypeID)
+			Trace.LogIt(fmt.Sprintf("%v", tempEvent.EventTime))
+			Trace.LogIt(fmt.Sprintf("%v", tempEvent.PTS))
+			Trace.LogIt(fmt.Sprintf("%v", tempEvent.Command))
+			Trace.LogIt(fmt.Sprintf("%v", tempEvent.TypeID))
 			elEntry.TypeID = tempEvent.TypeID
-			fmt.Println(string(tempEvent.UPID))
+			Trace.LogIt(fmt.Sprintf("%v", (string(tempEvent.UPID))))
 			elEntry.UPID = (strings.Split(string(tempEvent.UPID), ":"))[1]
-			fmt.Println(tempEvent.BreakDuration)
+			Trace.LogIt(fmt.Sprintf("%v", tempEvent.BreakDuration))
 			elEntry.Duration = uint64(tempEvent.BreakDuration) / 90000
 
 			data.EventList = append(data.EventList, elEntry)
@@ -260,7 +260,7 @@ func StreamList(w http.ResponseWriter, r *http.Request) {
 			data.StreamList = append(data.StreamList, file.Name())
 		}
 	}
-	fmt.Println(data.StreamList)
+	Trace.LogIt(fmt.Sprintf("%v", data.StreamList))
 
 	if err := tmpls.ExecuteTemplate(w, "streamList.html", data); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -283,7 +283,7 @@ func DateList(w http.ResponseWriter, r *http.Request) {
 	stream, ok := r.URL.Query()["stream"]
 
 	if !ok || len(stream[0]) < 1 {
-		log.Println("Url Param event is missing")
+		Error.LogIt("Url Param event is missing")
 		return
 	}
 
@@ -300,7 +300,7 @@ func DateList(w http.ResponseWriter, r *http.Request) {
 			data.DateList = append(data.DateList, file.Name())
 		}
 	}
-	fmt.Println(data.DateList)
+	Trace.LogIt(fmt.Sprintf("%v", data.DateList))
 
 	if err := tmpls.ExecuteTemplate(w, "dateList.html", data); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -418,11 +418,11 @@ func createJPEGs(ts *[]string, eventData *scte35.Event, dir string) {
 
 			err = xml.Unmarshal(rBytes, &mpegFile)
 			if err != nil {
-				fmt.Println("Unmarshal Error: ", err)
+				Error.LogIt(fmt.Sprintf("Unmarshal Error: ", err))
 			}
 
 			for i := 0; i < len(mpegFile.Frames[0].Frame); i++ {
-				Info.LogIt(fmt.Sprintf("CPB %v, DPNum %v PTS %v DTS %v\n",
+				Trace.LogIt(fmt.Sprintf("CPB %v, DPNum %v PTS %v DTS %v\n",
 					mpegFile.Frames[0].Frame[i].CodedPictureNumber,
 					mpegFile.Frames[0].Frame[i].DisplayPictureNumber,
 					mpegFile.Frames[0].Frame[i].PktPts,
