@@ -6,7 +6,7 @@
 	</head>
 	<body>
 	{{$stream:=.Stream}}
-        <h1>{{ .Header }}</h1>
+	<h1>SCTE-35 Signal and Video Alignment Monitor</h1>
         <h2>Choose a Date</h2>
         {{range .DateList}}
          <a href="/eventList?date={{.}}&stream={{$stream}}">{{.}}</a>
