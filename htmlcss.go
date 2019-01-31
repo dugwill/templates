@@ -27,7 +27,9 @@ var tmpls, _ = template.ParseFiles(
 	"template/event.html",
 	"template/event1.html",
 	"template/dateList.html",
-	"template/streamList.html")
+	"template/streamList.html",
+	"template/newEventHandle.html",
+	"template/frames.html")
 
 var dir = "/app/html/AdAlign/"
 
@@ -60,7 +62,7 @@ func main() {
 	}
 
 	server := http.Server{
-		Addr: ":9000",
+		Addr: ":9090",
 	}
 
 	http.Handle(dir, http.StripPrefix(dir, http.FileServer(http.Dir(dir))))
@@ -71,8 +73,150 @@ func main() {
 	http.HandleFunc("/adAlign/event", Event)
 	http.HandleFunc("/streamList", StreamList)
 	http.HandleFunc("/dateList", DateList)
+	http.HandleFunc("/adAlign/neweventhandle", NewEventHandle)
+	http.HandleFunc("/adAlign/frames", Frames)
 
 	log.Fatalln(server.ListenAndServe())
+}
+
+func NewEventHandle(w http.ResponseWriter, r *http.Request) {
+
+	data := struct {
+		Title  string
+		Header string
+		Event  scte35.Event
+		Signal string
+		Dir    string
+		Thumbs []string
+	}{
+		Title:  "Event",
+		Header: "Event Frames",
+	}
+
+	event, ok := r.URL.Query()["event"]
+	if !ok || len(event[0]) < 1 {
+		Error.LogIt("Url Param 'event' is missing")
+		return
+	}
+	date, ok := r.URL.Query()["date"]
+	if !ok || len(event[0]) < 1 {
+		Error.LogIt("Url Param 'date' is missing")
+		return
+	}
+	stream, ok := r.URL.Query()["stream"]
+
+	if !ok || len(event[0]) < 1 {
+		Error.LogIt("Url Param 'stream' is missing")
+		return
+	}
+
+	Trace.LogIt(fmt.Sprintf("Url Param 'stream' is: " + stream[0]))
+	Trace.LogIt(fmt.Sprintf("Url Param 'date' is: " + date[0]))
+	Trace.LogIt(fmt.Sprintf("Url Param 'event' is: " + event[0]))
+
+	data.Event.StreamName = stream[0]
+	data.Title = date[0]
+
+	dir := dir + stream[0] + "/" + date[0] + "/" + event[0]
+
+	Trace.LogIt(fmt.Sprint("%v", dir))
+
+	var eventData scte35.Event
+	ts, jpegs, err := readFiles(&eventData, dir)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	data.Event = eventData
+
+	if !jpegs {
+		createJPEGs(&ts, &eventData, dir)
+		jpegs = false
+	}
+
+	data.Signal = (strings.Split(string(data.Event.UPID), ":"))[1]
+	data.Dir = dir
+
+	if err := tmpls.ExecuteTemplate(w, "newEventHandle.html", data); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+}
+
+func Frames(w http.ResponseWriter, r *http.Request) {
+	data := struct {
+		StreamName    string
+		EventID       string
+		EventPTS      string
+		EventTypeID   string
+		EventSignal   string
+		EventDuration string
+		Dir           string
+		Thumbs        []string
+	}{}
+
+	streamName, ok := r.URL.Query()["StreamName"]
+	if !ok || len(streamName) < 1 {
+		Error.LogIt("Url Param 'StreamName' is missing")
+		return
+	}
+	data.StreamName = streamName[0]
+	fmt.Println(data.StreamName)
+
+	eventID, ok := r.URL.Query()["EventID"]
+	if !ok || len(eventID) < 1 {
+		Error.LogIt("Url Param 'EventID' is missing")
+		return
+	}
+	data.EventID = eventID[0]
+	fmt.Println(data.EventID)
+
+	eventPTS, ok := r.URL.Query()["EventPTS"]
+	if !ok || len(eventPTS) < 1 {
+		Error.LogIt("Url Param 'EventPTS' is missing")
+		return
+	}
+	data.EventPTS = eventPTS[0]
+	fmt.Println(data.EventPTS)
+
+	eventTypeId, ok := r.URL.Query()["EventTypeID"]
+	if !ok || len(eventTypeId[0]) < 1 {
+		Error.LogIt("Url Param 'EventTypeID' is missing")
+		return
+	}
+	data.EventTypeID = eventTypeId[0]
+	fmt.Println(data.EventTypeID)
+
+	eventSignal, ok := r.URL.Query()["EventSignal"]
+	if !ok || len(eventSignal) < 1 {
+		Error.LogIt("Url Param 'EventSignal' is missing")
+		return
+	}
+	data.EventSignal = eventSignal[0]
+	fmt.Println(data.EventSignal)
+
+	eventDuration, ok := r.URL.Query()["EventDuration"]
+	if !ok || len(eventDuration) < 1 {
+		Error.LogIt("Url Param 'EventDuration' is missing")
+		return
+	}
+	data.EventDuration = eventDuration[0]
+	fmt.Println(data.EventDuration)
+
+	dir, ok := r.URL.Query()["dir"]
+	if !ok || len(dir) < 1 {
+		Error.LogIt("Url Param 'dir' is missing")
+		return
+	}
+	data.Dir = dir[0]
+	fmt.Println(data.Dir)
+
+	if err := tmpls.ExecuteTemplate(w, "frames.html", data); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 }
 
 func Event(w http.ResponseWriter, r *http.Request) {

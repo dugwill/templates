@@ -1,0 +1,36 @@
+<html>
+	<head>
+		<meta charset="UTF-8">
+		<title>{{ .Title }}</title>
+
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+
+	</head>
+	<body>
+
+	<h1>SCTE-35 Signal and Video Alignment Monitor</h1>
+
+	{{$dir:=.Dir}}
+
+	<h2>Event Info</h2>
+	<form action="/adAlign/frames">
+		Stream: <input type="text" name="StreamName" value="{{.Event.StreamName}}" size="50" readonly style="border-style:none"><br>
+		EventID: <input type="number" name="EventID" value="{{.Event.EventID}}" size="50" readonly style="border-style:none"><br>
+		Event Time: <input type="text" name="EventTime" value="{{.Event.EventTime}}" size="50" readonly style="border-style:none"><br>
+		Event PTS: <input type="text" name="EventPTS" value="{{.Event.PTS}}" size="50" readonly style="border-style:none"><br>
+		Event TypeID: <input type="text" name="EventTypeID" value="{{.Event.TypeID}}" size="50" readonly style="border-style:none"><br>
+		Event Signal: <input type="text" name="EventSignal" value="{{.Signal}}" size="50" readonly style="border-style:none"><br>
+		Event Duration: <input type="text" name="EventDuration" value="{{.Event.BreakDuration}}" size="50" readonly style="border-style:none"><br>
+		<input type="text" name="dir" value=$dir hidden>
+
+		<p>Captures are available.<br>
+		Enter the number of frames to extract (Max 30 for each)</p>
+		Frames Before:<input  type="number" name="bframes" min="0" max="30" value="10"><br>
+		frames After:<input  type="number" name="aframes" min="0" max="30" value="10"><br>
+		<input type="submit" value="View Frames">
+	</form>
+
+
+	</body>
+</html>
+ 
