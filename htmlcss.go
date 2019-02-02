@@ -44,8 +44,12 @@ func main() {
 
 	//********** Parse Flags **********
 	l := flag.String("t", "", "Log Level: t for trace")
+	d := flag.String("d", "/app/html/AdAlign/", "Base directory for the file system")
+	p := flag.Int("p", 9000, "Listenr port")
 
 	flag.Parse()
+
+	dir = *d
 
 	//Opent log file
 
@@ -62,7 +66,7 @@ func main() {
 	}
 
 	server := http.Server{
-		Addr: ":9090",
+		Addr: ":" + fmt.Sprintf("%d", *p),
 	}
 
 	http.Handle(dir, http.StripPrefix(dir, http.FileServer(http.Dir(dir))))
@@ -119,7 +123,7 @@ func NewEventHandle(w http.ResponseWriter, r *http.Request) {
 
 	dir := dir + stream[0] + "/" + date[0] + "/" + event[0]
 
-	Trace.LogIt(fmt.Sprint("%v", dir))
+	Trace.LogIt(fmt.Sprintf("%v", dir))
 
 	var eventData scte35.Event
 	ts, jpegs, err := readFiles(&eventData, dir)
@@ -212,10 +216,12 @@ func Frames(w http.ResponseWriter, r *http.Request) {
 	data.Dir = dir[0]
 	fmt.Println(data.Dir)
 
-	if err := tmpls.ExecuteTemplate(w, "frames.html", data); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+	/*
+		if err := tmpls.ExecuteTemplate(w, "frames.html", data); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	*/
 
 }
 
@@ -259,7 +265,7 @@ func Event(w http.ResponseWriter, r *http.Request) {
 
 	dir := dir + stream[0] + "/" + date[0] + "/" + event[0]
 
-	Trace.LogIt(fmt.Sprint("%v", dir))
+	Trace.LogIt(fmt.Sprintf("%v", dir))
 
 	var eventData scte35.Event
 	ts, jpegs, err := readFiles(&eventData, dir)
@@ -562,7 +568,7 @@ func createJPEGs(ts *[]string, eventData *scte35.Event, dir string) {
 
 			err = xml.Unmarshal(rBytes, &mpegFile)
 			if err != nil {
-				Error.LogIt(fmt.Sprintf("Unmarshal Error: ", err))
+				Error.LogIt(fmt.Sprintf("Unmarshal Error: %v", err))
 			}
 
 			for i := 0; i < len(mpegFile.Frames[0].Frame); i++ {
