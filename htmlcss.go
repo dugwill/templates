@@ -160,68 +160,22 @@ func Frames(w http.ResponseWriter, r *http.Request) {
 		Thumbs        []string
 	}{}
 
-	streamName, ok := r.URL.Query()["StreamName"]
-	if !ok || len(streamName) < 1 {
-		Error.LogIt("Url Param 'StreamName' is missing")
+    fmt.Println("method:", r.Method) //get request method
+    if r.Method == "GET" {
+        t, _ := template.ParseFiles("login.gtpl")
+        t.Execute(w, nil)
+    } else {
+        r.ParseForm()
+        // logic part of log in
+        fmt.Println("StreamName:", r.Form["StreamName"])
+        fmt.Println("EventID:", r.Form["EventID"])
+    }
+
+	if err := tmpls.ExecuteTemplate(w, "frames.html", data); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	data.StreamName = streamName[0]
-	fmt.Println(data.StreamName)
 
-	eventID, ok := r.URL.Query()["EventID"]
-	if !ok || len(eventID) < 1 {
-		Error.LogIt("Url Param 'EventID' is missing")
-		return
-	}
-	data.EventID = eventID[0]
-	fmt.Println(data.EventID)
-
-	eventPTS, ok := r.URL.Query()["EventPTS"]
-	if !ok || len(eventPTS) < 1 {
-		Error.LogIt("Url Param 'EventPTS' is missing")
-		return
-	}
-	data.EventPTS = eventPTS[0]
-	fmt.Println(data.EventPTS)
-
-	eventTypeId, ok := r.URL.Query()["EventTypeID"]
-	if !ok || len(eventTypeId[0]) < 1 {
-		Error.LogIt("Url Param 'EventTypeID' is missing")
-		return
-	}
-	data.EventTypeID = eventTypeId[0]
-	fmt.Println(data.EventTypeID)
-
-	eventSignal, ok := r.URL.Query()["EventSignal"]
-	if !ok || len(eventSignal) < 1 {
-		Error.LogIt("Url Param 'EventSignal' is missing")
-		return
-	}
-	data.EventSignal = eventSignal[0]
-	fmt.Println(data.EventSignal)
-
-	eventDuration, ok := r.URL.Query()["EventDuration"]
-	if !ok || len(eventDuration) < 1 {
-		Error.LogIt("Url Param 'EventDuration' is missing")
-		return
-	}
-	data.EventDuration = eventDuration[0]
-	fmt.Println(data.EventDuration)
-
-	dir, ok := r.URL.Query()["dir"]
-	if !ok || len(dir) < 1 {
-		Error.LogIt("Url Param 'dir' is missing")
-		return
-	}
-	data.Dir = dir[0]
-	fmt.Println(data.Dir)
-
-	/*
-		if err := tmpls.ExecuteTemplate(w, "frames.html", data); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-	*/
 
 }
 

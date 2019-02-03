@@ -13,7 +13,7 @@
 	{{$dir:=.Dir}}
 
 	<h2>Event Info</h2>
-	<form action="/adAlign/frames">
+	<form action="/adAlign/frames" method="post">
 		Stream: <input type="text" name="StreamName" value="{{.Event.StreamName}}" size="50" readonly style="border-style:none"><br>
 		EventID: <input type="number" name="EventID" value="{{.Event.EventID}}" size="50" readonly style="border-style:none"><br>
 		Event Time: <input type="text" name="EventTime" value="{{.Event.EventTime}}" size="50" readonly style="border-style:none"><br>
