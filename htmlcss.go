@@ -149,33 +149,39 @@ func NewEventHandle(w http.ResponseWriter, r *http.Request) {
 }
 
 func Frames(w http.ResponseWriter, r *http.Request) {
-	data := struct {
-		StreamName    string
-		EventID       string
-		EventPTS      string
-		EventTypeID   string
-		EventSignal   string
-		EventDuration string
-		Dir           string
-		Thumbs        []string
-	}{}
 
-    fmt.Println("method:", r.Method) //get request method
-    if r.Method == "GET" {
-        t, _ := template.ParseFiles("login.gtpl")
-        t.Execute(w, nil)
-    } else {
-        r.ParseForm()
-        // logic part of log in
-        fmt.Println("StreamName:", r.Form["StreamName"])
-        fmt.Println("EventID:", r.Form["EventID"])
-    }
+	/*
+		data := struct {
+			StreamName    string
+			EventID       string
+			EventPTS      string
+			EventTypeID   string
+			EventSignal   string
+			EventDuration string
+			Dir           string
+			Thumbs        []string
+		}{}
+	*/
 
-	if err := tmpls.ExecuteTemplate(w, "frames.html", data); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+	fmt.Println("method:", r.Method) //get request method
+	if r.Method == "GET" {
+		fmt.Println("Frames Get")
+	} else {
+		r.ParseForm()
+		// logic part of log in
+		fmt.Println("StreamName:", r.Form["StreamName"])
+		fmt.Println("EventID:", r.Form["EventID"])
 	}
 
+	t, _ := template.ParseFiles("test.html")
+	t.Execute(w, nil)
+
+	/*
+		if err := tmpls.ExecuteTemplate(w, "frames.html", data); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	*/
 
 }
 
