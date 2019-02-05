@@ -3,10 +3,81 @@
 		<meta charset="UTF-8">
 		<title>Frames</title>
 
+		<style>
+				.container {
+				position: relative;
+				width: 30%;
+				display: inline;
+				}
+	
+				.image {
+				opacity: 1;
+				width: 15%;
+				height: auto;
+				transition: .5s ease;
+				backface-visibility: hidden;
+				}
+	
+				.middle {
+				transition: .5s ease;
+				opacity: 1;
+				position: absolute;
+				top: 50%;
+				left: 50%;
+				transform: translate(-50%, -50%);
+				-ms-transform: translate(-50%, -50%);
+				text-align: center;
+				}
+	
+				.text {
+				background-color: black;
+				color: white;
+				font-size: 12px;
+				padding: 2px 4px;
+				}
+			</style>
+
 	</head>
 	<body>
+	<h1>SCTE-35 Signal and Video Alignment Monitor</h1>
 
-        <h1>Test</h1>
+	{{$dir:=.Dir}}
+
+	<h2>EventInfo</h2>
+	<p>
+	Stream: {{.StreamName}}<br>
+	EventID: {{.EventID}}<br>
+	Event Time: {{.EventPTS}}<br>
+	Event TypeID: {{.EventTypeID}}<br>
+	Event Signal: {{.EventSignal}}<br>
+	Event Duration: {{.EventDuration}}<br>
+	</p>
+
+	{{range .BJPEG}}
+	<div class="container">
+		<img src="{{$dir}}/{{.}}" alt={{.}} class="image">
+		<div class="middle">
+			<div class="text">{{.}}</div>
+		</div>
+	</div>
+	<br>
+	{{end}}
+	<div class="container">
+			<img src="/app/html/AdAlign/splice.jpg" alt="splice" class="image">
+			<div class="middle">
+				<div class="text">{{.EventPTS}}</div>
+			</div>
+		</div>
+		<br>
+	{{range .AJPEG}}
+	<div class="container">
+		<img src="{{$dir}}/{{.}}" alt={{.}} class="image">
+		<div class="middle">
+			<div class="text">{{.}}</div>
+		</div>
+	</div>
+	<br>
+	{{end}}
 
     </body>
 </html>
