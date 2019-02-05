@@ -20,17 +20,6 @@ import (
 	"github.com/Comcast/gots/scte35"
 )
 
-var tmpls, _ = template.ParseFiles(
-	"template/index.html",
-	"template/graphics.html",
-	"template/eventList.html",
-	"template/event.html",
-	"template/event1.html",
-	"template/dateList.html",
-	"template/streamList.html",
-	"template/newEventHandle.html",
-	"template/frames.html")
-
 var dir = "/app/html/AdAlign/"
 
 var Info goLog.Info
@@ -57,7 +46,7 @@ func main() {
 
 	_, err = goLog.Initialize(logFile, *l)
 	if err != nil {
-		fmt.Println("Error initializing goLog: ", err)
+		Error.LogIt(fmt.Sprintf("Error initializing goLog: ", err))
 
 		logPointer.ILog = Info
 		logPointer.TLog = Trace
@@ -72,12 +61,11 @@ func main() {
 	http.Handle(dir, http.StripPrefix(dir, http.FileServer(http.Dir(dir))))
 	http.Handle("/AdAlign/", http.StripPrefix("/AdAlign/", http.FileServer(http.Dir("/html/AdAlign"))))
 	http.HandleFunc("/", Index)
-	http.HandleFunc("/graphics", Graphics)
 	http.HandleFunc("/eventList", EventList)
-	http.HandleFunc("/adAlign/event", Event)
+	http.HandleFunc("/event", Event)
 	http.HandleFunc("/streamList", StreamList)
 	http.HandleFunc("/dateList", DateList)
-	http.HandleFunc("/adAlign/neweventhandle", NewEventHandle)
+	//http.HandleFunc("/adAlign/neweventhandle", NewEventHandle)
 	http.HandleFunc("/adAlign/frames", Frames)
 
 	log.Fatalln(server.ListenAndServe())
@@ -99,6 +87,7 @@ func NewEventHandle(w http.ResponseWriter, r *http.Request) {
 
 	event, ok := r.URL.Query()["event"]
 	if !ok || len(event[0]) < 1 {
+
 		Error.LogIt("Url Param 'event' is missing")
 		return
 	}
@@ -128,7 +117,7 @@ func NewEventHandle(w http.ResponseWriter, r *http.Request) {
 	var eventData scte35.Event
 	ts, jpegs, err := readFiles(&eventData, dir)
 	if err != nil {
-		fmt.Println(err)
+		Error.LogIt(fmt.Sprintf("Error Reading Event File: %v", err))
 	}
 
 	data.Event = eventData
@@ -141,7 +130,8 @@ func NewEventHandle(w http.ResponseWriter, r *http.Request) {
 	data.Signal = (strings.Split(string(data.Event.UPID), ":"))[1]
 	data.Dir = dir
 
-	if err := tmpls.ExecuteTemplate(w, "newEventHandle.html", data); err != nil {
+	t, _ := template.ParseFiles("template/event.html")
+	if err := t.ExecuteTemplate(w, "event.html", data); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -162,72 +152,74 @@ func Frames(w http.ResponseWriter, r *http.Request) {
 		AJPEG         []string
 	}{}
 
-	fmt.Println("method:", r.Method) //get request method
+	//fmt.Println("method:", r.Method) //get request method
 
-	if r.Method == "GET" {
-		fmt.Println("Frames Get")
-	} else {
-		err := r.ParseForm()
-		if err != nil {
-			log.Fatal(err)
-		}
-		Info.LogIt("Form Data")
-		Info.LogIt("StreamName: " + r.Form["StreamName"][0])
-		Info.LogIt("EventID: " + r.Form["EventID"][0])
-		Info.LogIt("EventPTS: " + r.Form["EventPTS"][0])
-		Info.LogIt("EventTypeID: " + r.Form["EventTypeID"][0])
-		Info.LogIt("EventSignal: " + r.Form["EventSignal"][0])
-		Info.LogIt("EventDuration: " + r.Form["EventDuration"][0])
-		Info.LogIt("Frames before: " + r.Form["bframes"][0])
-		Info.LogIt("Frames after: " + r.Form["aframes"][0])
-		Info.LogIt("JPEG directory: " + r.Form["Dir"][0])
+	//if r.Method == "GET" {
+	//	fmt.Println("Frames Get")
+	//} else {
+	err := r.ParseForm()
+	if err != nil {
+		log.Fatal(err)
+	}
+	Info.LogIt("Form Data")
+	Info.LogIt("StreamName: " + r.Form["StreamName"][0])
+	Info.LogIt("EventID: " + r.Form["EventID"][0])
+	Info.LogIt("EventPTS: " + r.Form["EventPTS"][0])
+	Info.LogIt("EventTypeID: " + r.Form["EventTypeID"][0])
+	Info.LogIt("EventSignal: " + r.Form["EventSignal"][0])
+	Info.LogIt("EventDuration: " + r.Form["EventDuration"][0])
+	Info.LogIt("Frames before: " + r.Form["bframes"][0])
+	Info.LogIt("Frames after: " + r.Form["aframes"][0])
+	Info.LogIt("JPEG directory: " + r.Form["Dir"][0])
 
-		data.StreamName = r.Form["StreamName"][0]
-		data.EventID = r.Form["EventID"][0]
-		data.EventPTS = r.Form["EventPTS"][0]
-		data.EventTypeID = r.Form["EventTypeID"][0]
-		data.EventSignal = r.Form["EventSignal"][0]
-		data.EventDuration = r.Form["EventDuration"][0]
-		data.Dir = r.Form["Dir"][0]
+	data.StreamName = r.Form["StreamName"][0]
+	data.EventID = r.Form["EventID"][0]
+	data.EventPTS = r.Form["EventPTS"][0]
+	data.EventTypeID = r.Form["EventTypeID"][0]
+	data.EventSignal = r.Form["EventSignal"][0]
+	data.EventDuration = r.Form["EventDuration"][0]
+	data.Dir = r.Form["Dir"][0]
 
-		//Calc the clock ticks before and after the splice point
-		//Each frame ~=1501 ticks
-		iBframes, _ := strconv.ParseUint(r.Form["bframes"][0], 10, 64)
-		iAframes, _ := strconv.ParseUint(r.Form["aframes"][0], 10, 64)
-		iEventPTS, _ := strconv.ParseUint(r.Form["EventPTS"][0], 10, 64)
-		timeBefore := iBframes * 1501
-		timeAfter := iAframes * 1501
-		//Calc the PTS of the JPEGs to to display
-		firstJPG := iEventPTS - timeBefore
-		lastJPG := iEventPTS + timeAfter
-		Info.LogIt(fmt.Sprintf("Displaying frames from %v to %v", firstJPG, lastJPG))
+	//Calc the clock ticks before and after the splice point
+	//Each frame ~=1501 ticks
+	iBframes, _ := strconv.ParseUint(r.Form["bframes"][0], 10, 64)
+	iAframes, _ := strconv.ParseUint(r.Form["aframes"][0], 10, 64)
+	iEventPTS, _ := strconv.ParseUint(r.Form["EventPTS"][0], 10, 64)
+	timeBefore := iBframes * 1501
+	timeAfter := iAframes * 1501
+	//Calc the PTS of the JPEGs to to display
+	firstJPG := iEventPTS - timeBefore
+	lastJPG := iEventPTS + timeAfter
+	Info.LogIt(fmt.Sprintf("Displaying frames from %v to %v", firstJPG, lastJPG))
 
-		// Find jpgs within the PTS range
-		list, _ := ioutil.ReadDir(data.Dir)
-		//fmt.Println(list)
-		for _, file := range list {
-			Trace.LogIt(fmt.Sprintln("Name: " + file.Name()))
+	// Find jpgs within the PTS range
+	list, _ := ioutil.ReadDir(data.Dir)
+	//fmt.Println(list)
+	for _, file := range list {
+		Trace.LogIt(fmt.Sprintf("Name: " + file.Name()))
 
-			if filepath.Ext(file.Name()) == ".jpg" {
-				fileStr := (strings.Split(file.Name(), "."))[0]
-				filePTS, _ := strconv.ParseUint(fileStr, 10, 64)
-				if filePTS >= firstJPG && filePTS <= iEventPTS {
-					data.BJPEG = append(data.BJPEG, file.Name())
-				}
-				if filePTS >= iEventPTS && filePTS <= lastJPG {
-					data.AJPEG = append(data.AJPEG, file.Name())
-				}
+		if filepath.Ext(file.Name()) == ".jpg" {
+			fileStr := (strings.Split(file.Name(), "."))[0]
+			filePTS, _ := strconv.ParseUint(fileStr, 10, 64)
+			if filePTS >= firstJPG && filePTS <= iEventPTS {
+				data.BJPEG = append(data.BJPEG, file.Name())
+			}
+			if filePTS >= iEventPTS && filePTS <= lastJPG {
+				data.AJPEG = append(data.AJPEG, file.Name())
 			}
 		}
 	}
+	//}
 
-	if err := tmpls.ExecuteTemplate(w, "frames.html", data); err != nil {
+	t, _ := template.ParseFiles("template/frames.html")
+	if err := t.ExecuteTemplate(w, "frames.html", data); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 }
 
+// Event Drive the display of a single event
 func Event(w http.ResponseWriter, r *http.Request) {
 
 	data := struct {
@@ -273,7 +265,7 @@ func Event(w http.ResponseWriter, r *http.Request) {
 	var eventData scte35.Event
 	ts, jpegs, err := readFiles(&eventData, dir)
 	if err != nil {
-		fmt.Println(err)
+		Error.LogIt(fmt.Sprintf("Error Reading Event File: %v", err))
 	}
 
 	data.Event = eventData
@@ -283,20 +275,11 @@ func Event(w http.ResponseWriter, r *http.Request) {
 		jpegs = false
 	}
 
-	//time.Sleep(5 * time.Second)
-
-	list, _ := ioutil.ReadDir(dir) // 0 to read all files and folders
-	for _, file := range list {
-
-		if filepath.Ext(file.Name()) == ".jpg" {
-			data.Thumbs = append(data.Thumbs, file.Name())
-		}
-	}
-	fmt.Println(data.Thumbs)
 	data.Signal = (strings.Split(string(data.Event.UPID), ":"))[1]
 	data.Dir = dir
 
-	if err := tmpls.ExecuteTemplate(w, "event.html", data); err != nil {
+	t, _ := template.ParseFiles("template/event.html")
+	if err := t.ExecuteTemplate(w, "event.html", data); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -353,15 +336,15 @@ func EventList(w http.ResponseWriter, r *http.Request) {
 			b, err := ioutil.ReadFile(dir + stream[0] + "/" + date[0] + "/" + file.Name())
 
 			if err != nil {
-				fmt.Print(err)
+				Error.LogIt(fmt.Sprintf("%v", err))
 				continue
 			}
 			var tempEvent scte35.Event
-			var elEntry EventList
+			var elEntry EventList //For setting up eventlist
 
 			a := strings.Split(file.Name(), ".")
 			elEntry.EventFile = a[0] + "." + a[1]
-			fmt.Println(elEntry.EventFile)
+			Info.LogIt(fmt.Sprintf("Processing DAT file: %v", elEntry.EventFile))
 
 			xml.Unmarshal(b, &tempEvent)
 
@@ -385,8 +368,8 @@ func EventList(w http.ResponseWriter, r *http.Request) {
 	//fmt.Println(data.EventList)
 
 	//Process .dat files
-
-	if err := tmpls.ExecuteTemplate(w, "eventList.html", data); err != nil {
+	t, _ := template.ParseFiles("template/eventList.html")
+	if err := t.ExecuteTemplate(w, "eventList.html", data); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -415,7 +398,8 @@ func StreamList(w http.ResponseWriter, r *http.Request) {
 	}
 	Trace.LogIt(fmt.Sprintf("%v", data.StreamList))
 
-	if err := tmpls.ExecuteTemplate(w, "streamList.html", data); err != nil {
+	t, _ := template.ParseFiles("template/streamList.html")
+	if err := t.ExecuteTemplate(w, "streamList.html", data); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -455,7 +439,8 @@ func DateList(w http.ResponseWriter, r *http.Request) {
 	}
 	Trace.LogIt(fmt.Sprintf("%v", data.DateList))
 
-	if err := tmpls.ExecuteTemplate(w, "dateList.html", data); err != nil {
+	t, _ := template.ParseFiles("template/dateList.html")
+	if err := t.ExecuteTemplate(w, "dateList.html", data); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -466,38 +451,12 @@ func Index(w http.ResponseWriter, r *http.Request) {
 		Title  string
 		Header string
 	}{
-		Title:  "Index Page",
-		Header: "Hello, World!",
+		Title:  "AdAlignment Monitor",
+		Header: "SCTE-35 Signal and Video Alignment Monitor",
 	}
 
-	if err := tmpls.ExecuteTemplate(w, "index.html", data); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-}
-
-func Graphics(w http.ResponseWriter, r *http.Request) {
-
-	data := struct {
-		Title  string
-		Header string
-		Slice  []string
-	}{
-		Title:  "Graphics Page",
-		Header: "Here are some Graphics!",
-	}
-
-	fmt.Println(len(data.Slice))
-	fmt.Println(data.Slice)
-	for f := range data.Slice {
-		data.Slice[f] = filepath.Base(data.Slice[f])
-	}
-
-	fmt.Println(data.Slice)
-
-	fmt.Println("Serving Graphics")
-
-	if err := tmpls.ExecuteTemplate(w, "graphics.html", data); err != nil {
+	t, _ := template.ParseFiles("template/index.html")
+	if err := t.ExecuteTemplate(w, "index.html", data); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -537,14 +496,14 @@ func createJPEGs(ts *[]string, eventData *scte35.Event, dir string) {
 
 			respBytes, err := c.CombinedOutput()
 			if err != nil {
-				fmt.Println("Error: ", err)
+				Error.LogIt(fmt.Sprintf("Error creating ffprofe results: %v", err))
 			}
 
 			//fmt.Printf("%s", respBytes)
 
 			err = xml.Unmarshal(respBytes, &mpegFile)
 			if err != nil {
-				fmt.Println("Unmarshal Error: ", err)
+				Error.LogIt(fmt.Sprintf("Unmarshal Error: %v", err))
 			}
 
 			//fmt.Println(mpegFile.Streams[0].Stream[0].Duration)
@@ -566,7 +525,7 @@ func createJPEGs(ts *[]string, eventData *scte35.Event, dir string) {
 			//fmt.Println(c)
 			rBytes, rErr := c.CombinedOutput()
 			if rErr != nil {
-				fmt.Println("Error: ", rErr)
+				Error.LogIt(fmt.Sprintf("Error: %v", rErr))
 			}
 
 			err = xml.Unmarshal(rBytes, &mpegFile)
@@ -618,7 +577,7 @@ func createJPEGs(ts *[]string, eventData *scte35.Event, dir string) {
 
 			err := xml.Unmarshal(rBytes, &mpegFile)
 			if err != nil {
-				fmt.Println("Unmarshal Error: ", err)
+				Error.LogIt(fmt.Sprintf("Unmarshal Error: %v", err))
 			}
 
 			for i := 0; i < len(mpegFile.Frames[0].Frame); i++ {
@@ -680,7 +639,7 @@ func extractJPGS(numJPEGS, startFrame int, dir, fileName string, before bool) {
 
 	err := c.Run()
 	if err != nil {
-		fmt.Println("Error: ", err)
+		Error.LogIt(fmt.Sprintln("Error: %v", err))
 	}
 
 }
@@ -697,7 +656,6 @@ func readFiles(eventData *scte35.Event, dir string) (ts []string, jpegs bool, er
 	b, err := ioutil.ReadFile(dir + ".dat")
 
 	if err != nil {
-		fmt.Print(err)
 		err := errors.New("Error reading metadata file")
 		return ts, jpegs, err
 	}
