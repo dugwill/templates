@@ -1,7 +1,7 @@
 <html>
 	<head>
 		<meta charset="UTF-8">
-                <title>{{ .Title }}</title>
+                <title>{{.Title}}</title>
                 
                 <style>
 			table, th, td {
@@ -20,7 +20,7 @@
                 {{range .StreamList}}
                 <tr>
                         <td>
-                          <a href="/dateList?stream={{.}}">{{.}}</a>
+                                <a href="/dateList?stream={{.}}">{{.}}</a>
                         </td>
                 </tr>
                 {{end}}
