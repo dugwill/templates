@@ -5,30 +5,104 @@
 
 		<meta name="viewport" content="width=device-width, initial-scale=1">
 
+		<style>
+			.container {
+			position: relative;
+			width: 30%;
+			display: inline;
+			}
+
+			.image {
+			opacity: 1;
+			width: 15%;
+			height: auto;
+			transition: .5s ease;
+			backface-visibility: hidden;
+			}
+
+			.middle {
+			transition: .5s ease;
+			opacity: 1;
+			position: absolute;
+			top: 50%;
+			left: 50%;
+			transform: translate(-50%, -50%);
+			-ms-transform: translate(-50%, -50%);
+			text-align: center;
+			}
+
+			.text {
+			background-color: black;
+			color: white;
+			font-size: 12px;
+			padding: 2px 4px;
+			}
+		</style>
+
+
 	</head>
 	<body>
 
 	<h1>SCTE-35 Signal and Video Alignment Monitor</h1>
 
+	<table style="width:50%">
+		<tr>
+				<td><a href="/streamList">Stream List</a></td>
+				<td><a href="/dateList?stream={{.Event.StreamName}}">Date List</a></td>
+				<td><a href="/eventList?date={{.Title}}&stream={{.Event.StreamName}}">Event List</a></td>
+		</tr>
+	</table>
+
+
 	{{$dir:=.Dir}}
 
 	<h2>Event Info</h2>
-	<form action="/adAlign/frames" method="post">
-		Stream: <input type="text" name="StreamName" value="{{.Event.StreamName}}" size="50" readonly style="border-style:none"><br>
-		EventID: <input type="number" name="EventID" value="{{.Event.EventID}}" size="50" readonly style="border-style:none"><br>
-		Event Time: <input type="text" name="EventTime" value="{{.Event.EventTime}}" size="50" readonly style="border-style:none"><br>
-		Event PTS: <input type="text" name="EventPTS" value="{{.Event.PTS}}" size="50" readonly style="border-style:none"><br>
-		Event TypeID: <input type="text" name="EventTypeID" value="{{.Event.TypeID}}" size="50" readonly style="border-style:none"><br>
-		Event Signal: <input type="text" name="EventSignal" value="{{.Signal}}" size="50" readonly style="border-style:none"><br>
-		Event Duration: <input type="text" name="EventDuration" value="{{.Event.BreakDuration}}" size="50" readonly style="border-style:none"><br>
-		<input type="text" name="Dir" value="{{.Dir}}" hidden >
 
-		<p>Frame Captures are available.<br>
-		Enter the number of frames to extract (Max 30 for each)</p>
-		Frames Before:<input  type="number" name="bframes" min="0" max="30" value="5"><br>
-		Frames After:<input  type="number" name="aframes" min="0" max="30" value="5"><br>
-		<input type="submit" value="View Frames">
-	</form>
+		Stream: {{.Event.StreamName}}<br>
+		EventID: {{.Event.EventID}}<br>
+		Event Time:{{.Event.EventTime}}<br>
+		Event PTS: {{.Event.PTS}}<br>
+		Event TypeID:{{.Event.TypeID}}<br>
+		Event Signal: {{.Signal}}<br>
+		Event Duration: {{.Event.BreakDuration}}<br>
+
+	{{if .JPEGS}}
+		<form action="/event?stream={{.Event.StreamName}}&date={{.Title}}&event={{.ThisEvent}}" method="post">
+				Enter the number of frames to extract (Max 30 for each)</p>
+				Frames Before Splice:<input  type="number" name="bframes" min="0" max="30" value="{{.BFrames}}"><br>
+				Frames After Splice:<input  type="number" name="aframes" min="0" max="30" value="{{.AFrames}}"><br>
+				<input type="submit" value="View Frames">
+			</form>
+
+			{{range .BJPEG}}
+			<div class="container">
+				<img src="{{$dir}}/{{.}}" alt={{.}} class="image">
+				<div class="middle">
+					<div class="text">{{.}}</div>
+				</div>
+			</div>
+			<br>
+			{{end}}
+			<div class="container">
+					<img src="/app/html/AdAlign/splice.jpg" alt="splice" class="image">
+					<div class="middle">
+						<div class="text">{{.Event.PTS}}</div>
+					</div>
+				</div>
+				<br>
+			{{range .AJPEG}}
+			<div class="container">
+				<img src="{{$dir}}/{{.}}" alt={{.}} class="image">
+				<div class="middle">
+					<div class="text">{{.}}</div>
+				</div>
+			</div>
+			<br>
+			{{end}}
+
+	{{else}}
+		<h2>There are no frames to display</h2>
+	{{end}}
 	
 	</body>
 </html>

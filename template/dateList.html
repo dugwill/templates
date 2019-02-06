@@ -3,10 +3,15 @@
 		<meta charset="UTF-8">
 		<title>{{ .Title }}</title>
 		<link rel="stylesheet" href="styles/index.css" />
-	</head>
+	</head>s
 	<body>
 	{{$stream:=.Stream}}
 	<h1>SCTE-35 Signal and Video Alignment Monitor</h1>
+	<table style="width:50%">
+		<tr>
+			<td><a href="/streamList">Stream List</a></td>
+		</tr>
+	</table>
 	<h2>Stream: {{$stream}}</h2>
         <h2>Choose a Date</h2>
         {{range .DateList}}
