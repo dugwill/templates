@@ -65,8 +65,18 @@ func main() {
 	http.HandleFunc("/event", Event)
 	http.HandleFunc("/streamList", StreamList)
 	http.HandleFunc("/dateList", DateList)
+	http.HandleFunc("/about", about)
 
 	log.Fatalln(server.ListenAndServe())
+}
+
+func about(w http.ResponseWriter, r *http.Request) {
+
+	t, _ := template.ParseFiles("template/about.html")
+	if err := t.Execute(w, "about.html"); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
 
 func Index(w http.ResponseWriter, r *http.Request) {

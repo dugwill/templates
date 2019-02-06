@@ -65,10 +65,12 @@
 		Event TypeID:{{.Event.TypeID}}<br>
 		Event Signal: {{.Signal}}<br>
 		Event Duration: {{.Event.BreakDuration}}<br>
-
+		<br>
 	{{if .JPEGS}}
 		<form action="/event?stream={{.Event.StreamName}}&date={{.Title}}&event={{.ThisEvent}}" method="post">
-				Enter the number of frames to extract (Max 30 for each)</p>
+				Select the number of frames to extract (Max 30 for each)<br>
+				(If you don't see a visible content change, <br>
+				increase the number of frames before and/or after the splice point)<br><br>
 				Frames Before Splice:<input  type="number" name="bframes" min="0" max="30" value="{{.BFrames}}"><br>
 				Frames After Splice:<input  type="number" name="aframes" min="0" max="30" value="{{.AFrames}}"><br>
 				<input type="submit" value="View Frames">
