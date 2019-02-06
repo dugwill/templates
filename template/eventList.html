@@ -14,6 +14,15 @@
 		{{$stream:=.Stream}}
 		{{$date:=.Date}}
 		<h1>SCTE-35 Signal and Video Alignment Monitor</h1>
+
+		<table border="0" style="width:50%" >
+			<tr border="0">
+					<td border="0"><a href="/streamList">Stream List</a></td>
+					<td border="0"><a href="/dateList?stream={{.Stream}}">Date List</a></td>
+			</tr>
+		</table>
+
+
 		<h2>Stream: {{$stream}}</h2>
 		<h2>Date: {{$date}}</h2>
 		<h2>Event List</h2>
