@@ -17,9 +17,22 @@
         This is a proof of concept tool. It should not be considered stable<br> 
         and is subject to frequent outages for updates and testing.<br>
         <br>
+        What you will see on this tool is the SCTE-35 signals and video frames from the network feeds<br>
+        with an indication of where the splice should take place (according to the SCTE-35 signal).<br>
+        The system creates 4-5 splice points for each break.  The first point (listed at type 54) is the <br>
+        point were the splicer will begin to insert ad content.<br>
+        The other splice points (listed as Type 55) come at 30, 60, 90 and 120 seconds after the type 54.<br>
+        (The signal at 30s is rare).  These are oppurtunites for the splicer to cleanly switch back to the <br>
+        network feed. For a scheduled one minute break, the splicer will switch at the Type 54 and first type 55.<br>
+        There is no ad insertion in this tool so you will not see ad content.<br>
+        The times for the SCTE-35 signals are in the form of "Mon_Day_hhmmss.ss" and all times are GMT.<br>
+        <br>
         As it was inteneded to support the VDE Project, the monitoring tool is only looking at the output of Pillar,<br>
-        the IP stream packager. There are only 59 streams that are enabled for ad insertion via Pillar <br>
-        (~36 networks, with East and West Coast feeds). so the scope is limited for now.<br>
+        the IP stream packager. This is after VACT makes any alignment changes, so those changes should be reflected here.<br>
+        <br>
+        There are only 59 streams that are enabled for ad insertion via Pillar <br>
+        (~36 networks, with East and West Coast feeds). So the scope is limited for now.<br>
+        I am exploring the addition of mulitcast support in a future release.<br>
         <br>
         This is a prototype tool and should not be used as a final determination of ad alignment.<br>
         It should only be used as a guide for taking a closer look at a particular stream. <br>                     
@@ -27,8 +40,6 @@
         <a href="mailto:douglas_will@cable.comcast.com">Douglas Will</a><br>
         <br>
         This tool is intended for use within Comcast.  Do not share it outside of the company.<br>
-        Currently this tool is only monitoring DAI enabled linear IP/HTTP streams.<br> 
-        I am exploring the addition of mulitcast support in a future release.<br>
         </p>
 
 	</body>
